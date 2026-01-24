@@ -59,7 +59,9 @@ def get_weather_data(city=None, force=False):
         if city is None:
             city = config.get("city", "北京")
 
-        url = f"https://iot.foresh.com/api/weather?city={city}"
+        # 从配置获取API基础URL，默认使用官方API
+        api_base = config.get("weather_api_url", "https://iot.foresh.com/api/weather")
+        url = f"{api_base}?city={city}"
         print(f"正在获取{city}天气数据...")
 
         # 发送GET请求
@@ -202,7 +204,7 @@ def start():
     async def config_update(request):
         ack = {"status": "success"}
         try:
-            content_length = int(request.headers['Content-Length'])
+            content_length = int(request.headers["Content-Length"])
             post_data = (await request.read(content_length)).decode()
 
             for k, v in json.loads(post_data).items():
