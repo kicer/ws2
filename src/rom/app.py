@@ -236,6 +236,40 @@ def start():
         else:
             await request.write(json.dumps({"error": "Failed to get weather data"}))
 
+    # /lcd: 获取LCD状态
+    @naw.route("/lcd")
+    async def lcd_status(request):
+        await request.write("HTTP/1.1 200 OK\r\n")
+        await request.write("Content-Type: application/json\r\n\r\n")
+
+        # 返回LCD状态
+        lcd_status = {
+            "ready": display.is_ready(),
+            "brightness": display.brightness(),
+            "ui_type": config.get("ui_type", "default"),
+        }
+        await request.write(json.dumps(lcd_status))
+
+    # /lcd/set: 设置LCD状态
+    @naw.route("/lcd/set")
+    async def lcd_set(request):
+        ack = {"status": "success"}
+        try:
+            content_length = int(request.headers["Content-Length"])
+            post_data = (await request.read(content_length)).decode()
+
+            for k, v in json.loads(post_data).items():
+                if k == "brightness":
+                    display.brightness(int(v))
+        except Exception as e:
+            ack["status"] = "error"
+            ack["message"] = str(e)
+        finally:
+            await request.write(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+            )
+            await request.write(json.dumps(ack))
+
     # /config: 获取当前配置
     @naw.route("/config")
     async def config_get(request):
