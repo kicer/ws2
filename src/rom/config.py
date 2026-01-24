@@ -33,7 +33,7 @@ class Config:
 
             with open(self.CONFIG_FILE, "w") as f:
                 ujson.dump(save_data, f)
-            print(f"写入配置到 {self.CONFIG_FILE}")
+            print(f"Writing configuration to {self.CONFIG_FILE}")
             # 写入后重新加载配置
             return self.load()
         return False
@@ -45,11 +45,11 @@ class Config:
                 loaded_data = ujson.load(f)
 
             self.config_data.update(loaded_data)
-            print(f"从 {self.CONFIG_FILE} 加载配置")
+            print(f"Loading configuration from {self.CONFIG_FILE}")
 
             # 如果核心配置不完整，可能需要清除文件
             if not self.is_valid():
-                print("配置不完整，清除配置文件")
+                print("Configuration incomplete, clearing config file")
                 self.remove()
         except (OSError, ValueError):
             pass

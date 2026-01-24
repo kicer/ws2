@@ -123,7 +123,7 @@ class CaptivePortal:
                 return True
 
         # WiFi Connection failed but keep credentials for future retries
-        print("连接失败但保留配置，可以稍后重试")
+        print("Connection failed but keeping configuration for retry")
         return False
 
     def start(self):

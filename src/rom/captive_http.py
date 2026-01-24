@@ -65,7 +65,7 @@ class HTTPServer(BaseServer):
         self.sock.listen(2)
         self.sock.setblocking(False)
 
-    #@micropython.native
+    # @micropython.native
     def handle(self, sock, event, others):
         if sock is self.sock:
             # client connecting on port 80, so spawn off a new
@@ -125,9 +125,9 @@ class HTTPServer(BaseServer):
         config.set("password", password)
         config.set("city", city)
         if config.write():
-            print("配置保存成功")
+            print("Configuration saved successfully")
         else:
-            print("配置保存失败，数据无效")
+            print("Failed to save configuration, invalid data")
 
         # 重定向local_ip
         headers = (
@@ -148,7 +148,7 @@ class HTTPServer(BaseServer):
 
             json_data = ujson.dumps({"networks": networks})
         except Exception as e:
-            print(f"扫描网络时出错: {e}")
+            print(f"Error scanning networks: {e}")
             json_data = ujson.dumps({"networks": []})
 
         headers = b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\n"

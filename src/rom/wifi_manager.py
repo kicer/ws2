@@ -23,7 +23,7 @@ class WiFiManager:
             self._interface_initialized = True
             return True
         except Exception as e:
-            print(f"激活WiFi接口失败: {e}")
+            print(f"Failed to activate WiFi interface: {e}")
             return False
 
     def _safe_connect_check(self):
@@ -52,17 +52,17 @@ class WiFiManager:
         """尝试连接到WiFi"""
         # 加载配置
         if not self.config.load().is_valid():
-            print("没有有效的WiFi配置")
+            print("No valid WiFi configuration")
             return False
 
         ssid = self.config.get("ssid")
         password = self.config.get("password")
 
         if not ssid or not password:
-            print("SSID或密码为空")
+            print("SSID or password is empty")
             return False
 
-        print(f"正在尝试连接到SSID: {ssid}")
+        print(f"Trying to connect to SSID: {ssid}")
 
         try:
             # 确保接口处于活动状态
@@ -83,24 +83,24 @@ class WiFiManager:
                 if self._safe_connect_check():
                     ip = self.get_ip()
                     if ip:
-                        print(f"连接成功! IP: {ip}")
+                        print(f"Connected successfully! IP: {ip}")
                         return True
 
-                print(f"连接尝试 {attempts}/{self.MAX_CONN_ATTEMPTS}...")
+                print(f"Connection attempt {attempts}/{self.MAX_CONN_ATTEMPTS}...")
                 time.sleep(2)
                 attempts += 1
 
             # 连接失败
-            print(f"连接失败: {ssid}")
+            print(f"Connection failed: {ssid}")
             self.clear_config()
             try:
-                print(f"WLAN状态: {self.sta_if.status()}")
+                print(f"WLAN status: {self.sta_if.status()}")
             except:
                 pass
             return False
 
         except Exception as e:
-            print(f"连接过程中发生错误: {e}")
+            print(f"Error occurred during connection: {e}")
             return False
 
     def disconnect(self):
@@ -109,9 +109,9 @@ class WiFiManager:
             if self._safe_connect_check():
                 self.sta_if.disconnect()
                 time.sleep(1)
-            print("已断开WiFi连接")
+            print("WiFi connection disconnected")
         except Exception as e:
-            print(f"断开连接时出错: {e}")
+            print(f"Error disconnecting: {e}")
 
     def scan_networks(self):
         """扫描可用的WiFi网络"""
@@ -140,24 +140,24 @@ class WiFiManager:
 
             return result
         except Exception as e:
-            print(f"扫描WiFi网络时出错: {e}")
+            print(f"Error scanning WiFi networks: {e}")
             return []
 
     def reset(self):
         """重置WiFi配置"""
         try:
             self.config.remove()
-            print("WiFi配置已重置")
+            print("WiFi configuration has been reset")
         except Exception as e:
-            print(f"重置配置时出错: {e}")
+            print(f"Error resetting configuration: {e}")
 
     def clear_config(self):
         """清除WiFi配置（可选操作）"""
         try:
             self.config.set("ssid", None)
-            print("WiFi配置已临时清空")
+            print("WiFi configuration temporarily cleared")
         except Exception as e:
-            print(f"清除配置时出错: {e}")
+            print(f"Error clearing configuration: {e}")
 
 
 # 全局WiFi管理器实例
