@@ -4,8 +4,7 @@
 mpremote connect /dev/tty.wchusbserial14310 ls
 
 # 生成romfs文件系统并上传
-mpremote romfs -o website.romfs build website
-mpremote romfs deploy website.romfs
+mpremote romfs deploy src/rom
 
 # 复制文件
 for file in src/*.py; do
