@@ -55,10 +55,13 @@ def get_weather_data(city=None, force=False):
         if city is None:
             city = config.get("city", "北京")
 
+        # 获取本地时间戳
+        ts0 = int(time.mktime(time.localtime()))
+
         # 从配置获取API基础URL，默认使用官方API
         api_base = config.get("weather_api_url", "https://iot.foresh.com/api/weather")
-        url = f"{api_base}?city={city}"
-        print(f"正在获取{city}天气数据...")
+        url = f"{api_base}?city={city}&ts={ts0}"
+        print(f"正在获取{city}天气数据，时间戳:{ts0}...")
 
         # 发送GET请求
         response = urequests.get(url)
@@ -68,6 +71,17 @@ def get_weather_data(city=None, force=False):
             # 解析JSON数据
             wdata = response.json()
             response.close()  # 关闭连接释放内存
+
+            # 如果服务器返回了时间戳，则同步本地时间
+            if "ts" in wdata and isinstance(wdata["ts"], (int, float)):
+                server_ts = int(wdata["ts"])
+                ts1 = int(time.mktime(time.localtime()))
+                # 检查时间戳差异，如果差异过大才同步
+                if abs(server_ts - ts1) > 30:  # >30s
+                    machine.RTC.datetime(time.localtime(server_ts + (ts1 - ts0) // 2))
+                    print(
+                        f"时间已同步: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}"
+                    )
 
             # 提取关键信息，减少内存占用
             weather_report = {
@@ -82,6 +96,7 @@ def get_weather_data(city=None, force=False):
                 "date": wdata.get("date", "N/A"),
                 "advice": wdata.get("advice", "N/A"),
                 "image": wdata.get("image", "N/A"),
+                "ts": ts,  # 添加时间戳用于同步本地时间
             }
 
             print("天气数据获取成功")
@@ -104,7 +119,7 @@ async def weather_update_task():
     """定时更新天气数据的后台任务"""
 
     # 获取更新间隔，默认10分钟
-    interval_minutes = config.get("weather_interval", 10)
+    interval_minutes = int(config.get("weather_interval", 10))
     interval_ms = interval_minutes * 60 * 1000  # 转换为毫秒
 
     print(f"开始定时更新天气数据，间隔{interval_minutes}分钟")
@@ -175,6 +190,7 @@ async def animation_task():
 def start():
     # 初始化液晶屏
     display.init_display()
+    display.brightness(int(config.get("brightness", 10)))
     display.show_jpg("/rom/www/images/T1.jpg", 80, 80)
     gc.collect()
 
@@ -255,6 +271,8 @@ def start():
     async def lcd_set(request):
         ack = {"status": "success"}
         try:
+            if request.method != "POST":
+                raise Exception("invalid request")
             content_length = int(request.headers["Content-Length"])
             post_data = (await request.read(content_length)).decode()
 
@@ -284,6 +302,8 @@ def start():
     async def config_update(request):
         ack = {"status": "success"}
         try:
+            if request.method != "POST":
+                raise Exception("invalid request")
             content_length = int(request.headers["Content-Length"])
             post_data = (await request.read(content_length)).decode()
 

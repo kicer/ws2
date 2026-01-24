@@ -27,7 +27,7 @@ class Display:
         if not self._initialized:
             self.tft = None
             self._backlight = None
-            self._brightness = 50  # 默认亮度50%
+            self._brightness = 80  # 默认亮度80%
             self._initialized = True
 
     def init_display(self):
@@ -82,7 +82,7 @@ class Display:
         """设置背光亮度 (0-100)"""
         if _brightness >= 0 and _brightness <= 100:
             # 将0-100范围映射到0-1023 (PWM占空比)
-            duty = int(1023 * _brightness / 100)
+            duty = int(1023 * (100 - _brightness) / 100)
             self._backlight.duty(duty)
             self._brightness = _brightness
         return self._brightness

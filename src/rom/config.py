@@ -15,16 +15,13 @@ class Config:
             cls._instance = super(Config, cls).__new__(cls)
         return cls._instance
 
-    def __init__(
-        self, ssid=None, password=None, city=None, weather_interval=10, **kwargs
-    ):
+    def __init__(self, ssid=None, password=None, city=None, **kwargs):
         """初始化配置，只在第一次调用时执行"""
         if not self._initialized:
             self.config_data = {
                 "ssid": ssid,
                 "password": password,
                 "city": city,
-                "weather_interval": weather_interval,
             }
             # 添加其他可能的自定义配置项
             self.config_data.update(kwargs)
@@ -82,8 +79,7 @@ class Config:
         self.config_data = {
             "ssid": None,
             "password": None,
-            "city": None,
-            "weather_interval": 10,
+            "city": "北京",
         }
 
     def is_valid(self):
