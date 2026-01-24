@@ -9,6 +9,7 @@ import time
 import machine
 import uasyncio
 from config import config
+from display import display  # 导入液晶屏管理模块
 from wifi_manager import wifi_manager
 
 # 全局变量存储最新的天气数据
@@ -107,6 +108,7 @@ async def weather_update_task():
     interval_ms = interval_minutes * 60 * 1000  # 转换为毫秒
 
     print(f"开始定时更新天气数据，间隔{interval_minutes}分钟")
+    await uasyncio.sleep_ms(1 * 1000)
 
     while True:
         try:
@@ -127,31 +129,17 @@ async def weather_update_task():
 # 精简的动画显示任务
 async def animation_task():
     """显示JPG动画的后台任务"""
+    # 检查液晶屏是否已初始化
+    if not display.is_ready():
+        print("液晶屏未初始化，跳过动画任务")
+        return
+
     try:
-        import st7789
-        from machine import SPI, Pin
-
-        # 初始化显示屏
-        tft = st7789.ST7789(
-            SPI(1, 40_000_000, polarity=1),
-            240,
-            240,
-            dc=Pin(0, Pin.OUT),
-            reset=Pin(2, Pin.OUT),
-            backlight=Pin(5, Pin.OUT),
-            buffer_size=0,
-        )
-
-        # 初始化并清屏
-        tft.init()
-        gc.collect()
-        tft.fill(st7789.BLACK)
-        tft.off()
-
         # 动画参数
         frame_count = 20
         frame_delay = 10  # 帧延迟(毫秒)
 
+        await uasyncio.sleep_ms(2 * 1000)
         print(f"开始JPG动画，帧延迟: {frame_delay}ms")
 
         frame = 0
@@ -161,8 +149,8 @@ async def animation_task():
                 current_frame = (frame % frame_count) + 1
                 filename = f"/rom/www/images/T{current_frame}.jpg"
 
-                # 显示当前帧
-                tft.jpg(filename, 160, 160, st7789.FAST)
+                # 显示当前帧，右下角
+                display.show_jpg(filename, 160, 160)
 
                 # 控制帧率
                 await uasyncio.sleep_ms(frame_delay)
@@ -185,13 +173,18 @@ async def animation_task():
 
 
 def start():
-    # init lcd screen
+    # 初始化液晶屏
+    display.init_display()
+    display.show_jpg("/rom/www/images/T1.jpg", 80, 80)
+    gc.collect()
+
     if not wifi_manager.connect():
         print("Failed to connect to WiFi, starting CaptivePortal for configuration")
         from captive_portal import CaptivePortal
 
         portal = CaptivePortal()
         return portal.start()
+    gc.collect()
 
     # init web server
     from rom.nanoweb import Nanoweb
