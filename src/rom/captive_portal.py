@@ -19,7 +19,7 @@ class CaptivePortal:
         self.ap_if = network.WLAN(network.AP_IF)
 
         if essid is None:
-            essid = b"ws2-%s" % binascii.hexlify(self.ap_if.config("mac")[-3:])
+            essid = b"WS2-%s" % binascii.hexlify(self.ap_if.config("mac")[-3:])
         self.essid = essid
 
         self.dns_server = None

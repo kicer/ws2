@@ -54,7 +54,7 @@ class HTTPServer(BaseServer):
         self.request = dict()
         self.conns = dict()
         self.routes = {
-            b"/": b"/rom/index.html",
+            b"/": b"/rom/www/iwconfig.html",
             b"/login": self.login,
             b"/scan": self.scan_networks,
         }
