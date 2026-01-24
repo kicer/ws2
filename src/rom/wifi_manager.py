@@ -51,7 +51,7 @@ class WiFiManager:
     def connect(self):
         """尝试连接到WiFi"""
         # 加载配置
-        if not self.config.load().is_valid():
+        if not self.config.is_valid():
             print("No valid WiFi configuration")
             return False
 

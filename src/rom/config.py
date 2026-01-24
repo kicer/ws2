@@ -30,7 +30,7 @@ class Config:
             self.config_data.update(kwargs)
             self._initialized = True
             # 自动加载配置文件
-            self.load()
+            self._load()
 
     def write(self):
         """将配置写入JSON格式的配置文件"""
@@ -42,10 +42,10 @@ class Config:
                 ujson.dump(save_data, f)
             print(f"Writing configuration to {self.CONFIG_FILE}")
             # 写入后重新加载配置
-            return self.load()
+            return self._load()
         return False
 
-    def load(self):
+    def _load(self):
         """从配置文件加载配置"""
         try:
             with open(self.CONFIG_FILE, "r") as f:

@@ -7,14 +7,9 @@ import sys
 import time
 
 import machine
+import uasyncio
 from config import config
 from wifi_manager import wifi_manager
-
-
-def print_sysinfo():
-    gc.collect()
-    print(f"Memory Free: {gc.mem_free()}")
-
 
 # 全局变量存储最新的天气数据
 latest_weather = None
@@ -107,9 +102,6 @@ def get_weather_data(city=None, force=False):
 async def weather_update_task():
     """定时更新天气数据的后台任务"""
 
-    # 导入uasyncio
-    import uasyncio
-
     # 获取更新间隔，默认10分钟
     interval_minutes = config.get("weather_interval", 10)
     interval_ms = interval_minutes * 60 * 1000  # 转换为毫秒
@@ -132,7 +124,68 @@ async def weather_update_task():
             await uasyncio.sleep_ms(60 * 1000)
 
 
+# 精简的动画显示任务
+async def animation_task():
+    """显示JPG动画的后台任务"""
+    try:
+        import st7789
+        from machine import SPI, Pin
+
+        # 初始化显示屏
+        tft = st7789.ST7789(
+            SPI(1, 40_000_000, polarity=1),
+            240,
+            240,
+            dc=Pin(0, Pin.OUT),
+            reset=Pin(2, Pin.OUT),
+            backlight=Pin(5, Pin.OUT),
+            buffer_size=0,
+        )
+
+        # 初始化并清屏
+        tft.init()
+        gc.collect()
+        tft.fill(st7789.BLACK)
+        tft.off()
+
+        # 动画参数
+        frame_count = 20
+        frame_delay = 10  # 帧延迟(毫秒)
+
+        print(f"开始JPG动画，帧延迟: {frame_delay}ms")
+
+        frame = 0
+        while True:
+            try:
+                # 计算当前帧号(1-20)
+                current_frame = (frame % frame_count) + 1
+                filename = f"/rom/www/images/T{current_frame}.jpg"
+
+                # 显示当前帧
+                tft.jpg(filename, 160, 160, st7789.FAST)
+
+                # 控制帧率
+                await uasyncio.sleep_ms(frame_delay)
+
+                # 每轮清理一次内存
+                gc.collect()
+                if current_frame == frame_count:
+                    # gc.collect()
+                    print(f"Memory: {gc.mem_free()}")
+
+                frame += 1
+
+            except Exception as e:
+                print(f"动画帧错误: {e}")
+                # 出错后等待1秒再继续
+                await uasyncio.sleep_ms(1000)
+
+    except Exception as e:
+        print(f"动画任务初始化失败: {e}")
+
+
 def start():
+    # init lcd screen
     if not wifi_manager.connect():
         print("Failed to connect to WiFi, starting CaptivePortal for configuration")
         from captive_portal import CaptivePortal
@@ -220,14 +273,16 @@ def start():
             await request.write(json.dumps(ack))
 
     # create task
-    import uasyncio
-
     loop = uasyncio.get_event_loop()
     loop.create_task(naw.run())
 
     # 启动定时天气更新任务
     loop.create_task(weather_update_task())
 
+    # 启动动画显示任务
+    loop.create_task(animation_task())
+
     # run!
-    print_sysinfo()
+    gc.collect()
+    print(f"App Memory Free: {gc.mem_free()}")
     loop.run_forever()
