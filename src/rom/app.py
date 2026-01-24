@@ -2,56 +2,226 @@
 # 首先尝试连接已保存的WiFi，失败则启动CaptivePortal进行配置
 
 import gc
+import json
 import sys
 import time
 
-import json
 import machine
-
+from config import config
 from wifi_manager import wifi_manager
 
 
 def print_sysinfo():
     gc.collect()
-    print(f'Memory Free: {gc.mem_free()}')
+    print(f"Memory Free: {gc.mem_free()}")
+
+
+# 全局变量存储最新的天气数据
+latest_weather = None
+
+
+def parse_url_params(url):
+    # 解析URL中的查询参数，返回参数字典
+    params = {}
+
+    if "?" in url:
+        query_string = url.split("?")[1]
+        param_pairs = query_string.split("&")
+
+        for pair in param_pairs:
+            if "=" in pair:
+                key, value = pair.split("=", 1)
+                params[key] = value
+
+    return params
+
+
+# 简化的天气数据获取函数
+def get_weather_data(city=None, force=False):
+    """获取天气数据，返回JSON格式数据
+
+    Args:
+        city: 城市名称，如果为None则从配置文件获取
+        force: 是否强制刷新，True则忽略缓存重新获取
+    """
+    global latest_weather
+
+    # 检查是否需要强制更新或者缓存为空
+    if not force and latest_weather is not None:
+        # 使用缓存数据
+        print("使用缓存的天气数据")
+        return latest_weather
+
+    try:
+        import urequests
+
+        # 从配置文件获取城市，如果没有提供则使用配置中的值
+        if city is None:
+            city = config.get("city", "北京")
+
+        url = f"https://iot.foresh.com/api/weather?city={city}"
+        print(f"正在获取{city}天气数据...")
+
+        # 发送GET请求
+        response = urequests.get(url)
+
+        # 检查响应状态
+        if response.status_code == 200:
+            # 解析JSON数据
+            wdata = response.json()
+            response.close()  # 关闭连接释放内存
+
+            # 提取关键信息，减少内存占用
+            weather_report = {
+                "t": wdata.get("temperature", "N/A"),
+                "rh": wdata.get("humidity", "N/A"),
+                "pm25": wdata.get("pm25", "N/A"),
+                "weather": wdata.get("weather", "N/A"),
+                "t_min": wdata.get("t_min", "N/A"),
+                "t_max": wdata.get("t_max", "N/A"),
+                "city": wdata.get("city", "N/A"),
+                "aqi": wdata.get("aqi", "N/A"),
+                "date": wdata.get("date", "N/A"),
+                "advice": wdata.get("advice", "N/A"),
+                "image": wdata.get("image", "N/A"),
+            }
+
+            print("天气数据获取成功")
+            # 更新缓存
+            latest_weather = weather_report
+
+            return weather_report
+        else:
+            print(f"获取天气数据失败，状态码: {response.status_code}")
+            response.close()
+            return None
+
+    except Exception as e:
+        print(f"获取天气数据出错: {e}")
+        return None
+
+
+# 定时获取天气数据的任务
+async def weather_update_task():
+    """定时更新天气数据的后台任务"""
+
+    # 导入uasyncio
+    import uasyncio
+
+    # 获取更新间隔，默认10分钟
+    interval_minutes = config.get("weather_interval", 10)
+    interval_ms = interval_minutes * 60 * 1000  # 转换为毫秒
+
+    print(f"开始定时更新天气数据，间隔{interval_minutes}分钟")
+
+    while True:
+        try:
+            # 定期更新天气数据缓存
+            weather = get_weather_data()
+            if weather:
+                print("天气数据缓存已更新")
+
+            # 等待指定的间隔时间
+            await uasyncio.sleep_ms(interval_ms)
+
+        except Exception as e:
+            print(f"天气更新任务出错: {e}")
+            # 出错后等待1分钟再重试
+            await uasyncio.sleep_ms(60 * 1000)
+
 
 def start():
     if not wifi_manager.connect():
         print("Failed to connect to WiFi, starting CaptivePortal for configuration")
         from captive_portal import CaptivePortal
+
         portal = CaptivePortal()
         return portal.start()
 
     # init web server
     from rom.nanoweb import Nanoweb
+
     naw = Nanoweb()
-    # website top directory  
-    naw.STATIC_DIR = '/rom/www'
+    # website top directory
+    naw.STATIC_DIR = "/rom/www"
 
     # /ping: pong
-    @naw.route('/ping')
+    @naw.route("/ping")
     async def ping(request):
         await request.write("HTTP/1.1 200 OK\r\n")
         await request.write("Content-Type: text\r\n\r\n")
         await request.write("pong")
 
     # /status
-    @naw.route('/status')
+    @naw.route("/status")
     async def ping(request):
         await request.write("HTTP/1.1 200 OK\r\n")
         await request.write("Content-Type: application/json\r\n\r\n")
-        await request.write(json.dumps({
-            'time':'{}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}'.format(*time.localtime()),
-            'uptime': str(f'{time.ticks_ms()//1000} sec'),
-            'memory': str(f'{gc.mem_free()//1000} KB'),
-            'platform': str(sys.platform),
-            'version': str(sys.version),
-        }))
+        await request.write(
+            json.dumps(
+                {
+                    "time": "{}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
+                        *time.localtime()
+                    ),
+                    "uptime": str(f"{time.ticks_ms() // 1000} sec"),
+                    "memory": str(f"{gc.mem_free() // 1000} KB"),
+                    "platform": str(sys.platform),
+                    "version": str(sys.version),
+                }
+            )
+        )
+
+    # /weather: 返回天气数据
+    @naw.route("/weather/*")
+    async def weather_status(request):
+        await request.write("HTTP/1.1 200 OK\r\n")
+        await request.write("Content-Type: application/json\r\n\r\n")
+
+        # 解析URL参数
+        params = parse_url_params(request.url)
+        # 获取天气数据
+        weather = get_weather_data(
+            city=params.get("city"), force=params.get("force", False)
+        )
+        if weather:
+            await request.write(json.dumps(weather))
+        else:
+            await request.write(json.dumps({"error": "Failed to get weather data"}))
+
+    # /config: 获取当前配置
+    @naw.route("/config")
+    async def config_get(request):
+        await request.write("HTTP/1.1 200 OK\r\n")
+        await request.write("Content-Type: application/json\r\n\r\n")
+        # 返回所有配置项
+        await request.write(json.dumps(config.config_data))
+
+    # /config/set: 更新配置
+    @naw.route("/config/set")
+    async def config_update(request):
+        ack = {"status": "success"}
+        try:
+            post_data = json.loads(await request.read())
+            for k, v in post_data.items():
+                config.set(k, v)
+            config.write()
+        except Exception as e:
+            ack["status"] = "error"
+            ack["message"] = str(e)
+        finally:
+            await request.write(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+            )
+            await request.write(json.dumps(ack))
 
     # create task
     import uasyncio
+
     loop = uasyncio.get_event_loop()
     loop.create_task(naw.run())
+
+    # 启动定时天气更新任务
+    loop.create_task(weather_update_task())
 
     # run!
     print_sysinfo()
