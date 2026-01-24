@@ -36,10 +36,10 @@ async def write(request, data):
 
 async def error(request, code, reason):
     await request.write("HTTP/1.1 %s %s\r\n\r\n" % (code, reason))
-    await request.write("<h1>%s</h1>" % (reason))
+    await request.write(str(reason))
 
 
-async def send_file(request, filename, segment=64, binary=False):
+async def send_file(request, filename, segment=64, binary=True):
     try:
         with open(filename, 'rb' if binary else 'r') as f:
             while True:
@@ -59,7 +59,7 @@ class Nanoweb:
     headers = {}
 
     routes = {}
-    assets_extensions = ('html', 'css', 'js')
+    assets_extensions = ('.html', '.css', '.js', '.jpg', '.png', '.gif')
 
     callback_request = None
     callback_error = staticmethod(error)
@@ -166,18 +166,13 @@ class Nanoweb:
                     else:
                         # 3. Try to load index file
                         if request.url in ('', '/'):
-                            await send_file(request, self.INDEX_FILE)
+                            await self.generate_output(request, self.INDEX_FILE)
                         else:
                             # 4. Current url have an assets extension ?
                             for extension in self.assets_extensions:
-                                if request.url.endswith('.' + extension):
-                                    await send_file(
-                                        request,
-                                        '%s%s' % (
-                                            self.STATIC_DIR,
-                                            request.url,
-                                        ),
-                                        binary=True,
+                                if request.url.endswith(extension):
+                                    await self.generate_output(
+                                        request, '%s%s' % (self.STATIC_DIR,request.url),
                                     )
                                     break
                             else:

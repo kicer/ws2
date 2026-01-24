@@ -5,91 +5,54 @@ import gc
 import sys
 import time
 
+import json
 import machine
 
-# 使用全局的WiFiManager实例
 from wifi_manager import wifi_manager
 
-print("Trying to connect to saved WiFi network...")
 
-if wifi_manager.connect():
-    # 连接成功
-    ip = wifi_manager.get_ip()
-    print(f"WiFi connected successfully, IP address: {ip}")
+def print_sysinfo():
+    gc.collect()
+    print(f'Memory Free: {gc.mem_free()}')
 
-    # 在这里可以添加主应用程序代码
-    # 例如：启动天气数据获取和显示
-    print("Starting main application...")
+def start():
+    if not wifi_manager.connect():
+        print("Failed to connect to WiFi, starting CaptivePortal for configuration")
+        from captive_portal import CaptivePortal
+        portal = CaptivePortal()
+        return portal.start()
 
-    # 示例：保持连接
-    try:
-        while True:
-            # 检查连接状态
-            if not wifi_manager.is_connected():
-                print("WiFi connection lost")
-                break
+    # init web server
+    from rom.nanoweb import Nanoweb
+    naw = Nanoweb()
+    # website top directory  
+    naw.STATIC_DIR = '/rom/www'
 
-            # 每3秒报告一次状态
-            time.sleep(3)
-            gc.collect()
-            print(f"Running normally, IP: {ip}, Free memory: {gc.mem_free()} bytes")
+    # /ping: pong
+    @naw.route('/ping')
+    async def ping(request):
+        await request.write("HTTP/1.1 200 OK\r\n")
+        await request.write("Content-Type: text\r\n\r\n")
+        await request.write("pong")
 
-    except KeyboardInterrupt:
-        print("User interrupted")
+    # /status
+    @naw.route('/status')
+    async def ping(request):
+        await request.write("HTTP/1.1 200 OK\r\n")
+        await request.write("Content-Type: application/json\r\n\r\n")
+        await request.write(json.dumps({
+            'time':'{}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}'.format(*time.localtime()),
+            'uptime': str(f'{time.ticks_ms()//1000} sec'),
+            'memory': str(f'{gc.mem_free()//1000} KB'),
+            'platform': str(sys.platform),
+            'version': str(sys.version),
+        }))
 
-    finally:
-        wifi_manager.disconnect()
-        print("Application ended")
+    # create task
+    import uasyncio
+    loop = uasyncio.get_event_loop()
+    loop.create_task(naw.run())
 
-else:
-    # 连接失败，启动CaptivePortal进行WiFi配置
-    print("Failed to connect to WiFi, starting CaptivePortal for configuration")
-
-    from captive_portal import CaptivePortal
-
-    # 启动CaptivePortal
-    portal = CaptivePortal()
-
-    try:
-        if portal.start():
-            # clear
-            del portal
-            sys.modules.pop("CaptivePortal", None)
-            sys.modules.pop("captive_dns", None)
-            sys.modules.pop("captive_http", None)
-            sys.modules.pop("server_base", None)
-            gc.collect()
-            # CaptivePortal成功配置并连接
-            print("WiFi configured successfully and connected")
-
-            # 在这里可以添加主应用程序代码
-            print("Starting main application...")
-
-            # 示例：保持连接
-            try:
-                while True:
-                    # 检查连接状态
-                    if not wifi_manager.is_connected():
-                        print("WiFi connection lost")
-                        break
-
-                    # 每3秒报告一次状态
-                    time.sleep(3)
-                    gc.collect()
-                    print(f"Running normally, Free memory: {gc.mem_free()} bytes")
-
-            except KeyboardInterrupt:
-                print("User interrupted")
-
-            finally:
-                wifi_manager.disconnect()
-                print("Application ended")
-        else:
-            print("CaptivePortal failed to establish connection")
-
-    except KeyboardInterrupt:
-        print("User interrupted")
-
-    finally:
-        time.sleep(3)
-        machine.reset()
+    # run!
+    print_sysinfo()
+    loop.run_forever()
