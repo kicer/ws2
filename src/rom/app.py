@@ -172,7 +172,7 @@ def start():
         )
 
     # /weather: 返回天气数据
-    @naw.route("/weather/*")
+    @naw.route("/weather*")
     async def weather_status(request):
         await request.write("HTTP/1.1 200 OK\r\n")
         await request.write("Content-Type: application/json\r\n\r\n")
@@ -197,12 +197,15 @@ def start():
         await request.write(json.dumps(config.config_data))
 
     # /config/set: 更新配置
+    # curl -H "Content-Type: application/json" -X POST -d '{"city":"xxx","who":"ami"}' 'http://<url>/config/set'
     @naw.route("/config/set")
     async def config_update(request):
         ack = {"status": "success"}
         try:
-            post_data = json.loads(await request.read())
-            for k, v in post_data.items():
+            content_length = int(request.headers['Content-Length'])
+            post_data = (await request.read(content_length)).decode()
+
+            for k, v in json.loads(post_data).items():
                 config.set(k, v)
             config.write()
         except Exception as e:

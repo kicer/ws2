@@ -1,8 +1,7 @@
 import uasyncio as asyncio
 import uerrno
 
-
-__version__ = '1.0.0'
+__version__ = "1.0.0"
 
 
 class HttpError(Exception):
@@ -29,9 +28,7 @@ class Request:
 
 
 async def write(request, data):
-    await request.write(
-        data.encode('ISO-8859-1') if type(data) == str else data
-    )
+    await request.write(data.encode("ISO-8859-1") if type(data) == str else data)
 
 
 async def error(request, code, reason):
@@ -41,7 +38,7 @@ async def error(request, code, reason):
 
 async def send_file(request, filename, segment=64, binary=True):
     try:
-        with open(filename, 'rb' if binary else 'r') as f:
+        with open(filename, "rb" if binary else "r") as f:
             while True:
                 data = f.read(segment)
                 if not data:
@@ -54,28 +51,29 @@ async def send_file(request, filename, segment=64, binary=True):
 
 
 class Nanoweb:
-
-    extract_headers = ('Authorization', 'Content-Length', 'Content-Type')
+    extract_headers = ("Authorization", "Content-Length", "Content-Type")
     headers = {}
 
     routes = {}
-    assets_extensions = ('.html', '.css', '.js', '.jpg', '.png', '.gif')
+    assets_extensions = (".html", ".css", ".js", ".jpg", ".png", ".gif")
 
     callback_request = None
     callback_error = staticmethod(error)
 
-    STATIC_DIR = ''
-    INDEX_FILE = STATIC_DIR + '/index.html'
+    STATIC_DIR = ""
+    INDEX_FILE = STATIC_DIR + "/index.html"
 
-    def __init__(self, port=80, address='0.0.0.0'):
+    def __init__(self, port=80, address="0.0.0.0"):
         self.port = port
         self.address = address
 
     def route(self, route):
         """Route decorator"""
+
         def decorator(func):
             self.routes[route] = func
             return func
+
         return decorator
 
     async def generate_output(self, request, handler):
@@ -117,7 +115,7 @@ class Nanoweb:
 
     async def handle(self, reader, writer):
         items = await reader.readline()
-        items = items.decode('ascii').split()
+        items = items.decode("ascii").split()
         if len(items) != 3:
             return
 
@@ -135,7 +133,7 @@ class Nanoweb:
 
                 while True:
                     items = await reader.readline()
-                    items = items.decode('ascii').split(":", 1)
+                    items = items.decode("ascii").split(":", 1)
 
                     if len(items) == 2:
                         header, value = items
@@ -149,30 +147,31 @@ class Nanoweb:
                 if self.callback_request:
                     self.callback_request(request)
 
-                if request.url in self.routes:
+                request_url = request.url.rstrip("/")
+                if request_url in self.routes:
                     # 1. If current url exists in routes
-                    request.route = request.url
-                    await self.generate_output(request,
-                                               self.routes[request.url])
+                    request.route = request_url
+                    await self.generate_output(request, self.routes[request_url])
                 else:
                     # 2. Search url in routes with wildcard
                     for route, handler in self.routes.items():
-                        if route == request.url \
-                            or (route[-1] == '*' and
-                                request.url.startswith(route[:-1])):
+                        if route == request_url or (
+                            route[-1] == "*" and request_url.startswith(route[:-1])
+                        ):
                             request.route = route
                             await self.generate_output(request, handler)
                             break
                     else:
                         # 3. Try to load index file
-                        if request.url in ('', '/'):
+                        if request_url in ("", "/"):
                             await self.generate_output(request, self.INDEX_FILE)
                         else:
                             # 4. Current url have an assets extension ?
                             for extension in self.assets_extensions:
-                                if request.url.endswith(extension):
+                                if request_url.endswith(extension):
                                     await self.generate_output(
-                                        request, '%s%s' % (self.STATIC_DIR,request.url),
+                                        request,
+                                        "%s%s" % (self.STATIC_DIR, request_url),
                                     )
                                     break
                             else:
