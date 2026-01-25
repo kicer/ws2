@@ -36,7 +36,7 @@ def parse_url_params(url):
 def sync_ntp_time():
     import ntptime
 
-    ntptime.host = config.get("ntphost", "ntp.ntsc.ac.cn")
+    ntptime.host = config.get("ntphost", "ntp1.aliyun.com")
     t = ntptime.time() + 3600 * 8
 
     rtc = machine.RTC()
@@ -117,39 +117,39 @@ async def sysinfo_update_task():
     """定时后台任务"""
     weather_ts = 2  # 启动2s后更新
     ntptime_ts = 1  # 启动1s后更新
-    config_ts = 60  # 定时60s更新一次配置
 
     # 初始化时间戳
     start_ticks = time.ticks_ms()
-    last_weather = last_ntptime = last_config = start_ticks
+    last_weather = last_ntptime = start_ticks
 
     while True:
+        task_id = None  # task执行失败后，要快速重试
         try:
             current_ticks = time.ticks_ms()
             # 计算时间差，处理溢出
-            config_diff = time.ticks_diff(current_ticks, last_config)
             weather_diff = time.ticks_diff(current_ticks, last_weather)
             ntp_diff = time.ticks_diff(current_ticks, last_ntptime)
 
             if weather_diff >= weather_ts * 1000:
                 # 更新天气数据
                 gc.collect()
-                weather_ts = int(config.get("weather_ts", 600))  # 10min
+                task_id = "weather"
                 get_weather_data(force=True)
                 last_weather = current_ticks
+                weather_ts = int(config.get("weather_ts", 600))  # 10min
             elif ntp_diff >= ntptime_ts * 1000:
                 # 更新NTP时间
                 gc.collect()
-                ntptime_ts = int(config.get("ntptime_ts", 3600)) + 13  # 1hour
+                task_id = "ntp"
                 sync_ntp_time()
                 last_ntptime = current_ticks
-            elif config_diff >= config_ts * 1000:
-                # 重新读取配置
-                weather_ts = int(config.get("weather_ts", 600))  # 10min
                 ntptime_ts = int(config.get("ntptime_ts", 3600)) + 13  # 1hour
-                last_config = current_ticks
         except Exception as e:
             print(f"定时任务更新错误: {e}")
+            if task_id == "ntp":
+                ntptime_ts = 10
+            elif task_id == "weather":
+                weather_ts = 60
 
         # 等待x秒再检查（1~30）
         _x = min(30, 1 + min(weather_ts, ntptime_ts) // 10)
