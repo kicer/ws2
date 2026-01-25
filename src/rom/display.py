@@ -30,7 +30,7 @@ class Display:
             self._brightness = 80  # 默认亮度80%
             self._initialized = True
 
-    def init_display(self):
+    def init_display(self, bl_pwm=True):
         """初始化液晶屏"""
         try:
             from machine import PWM, SPI, Pin
@@ -46,7 +46,10 @@ class Display:
             )
 
             # 初始化PWM背光控制
-            self._backlight = PWM(Pin(5), freq=1000)
+            if bl_pwm:
+                self._backlight = PWM(Pin(5), freq=1000)
+            else:
+                self._backlight = Pin(5, Pin.OUT)
             self.brightness(self._brightness)
 
             # 初始化并清屏
@@ -81,9 +84,16 @@ class Display:
     def brightness(self, _brightness=-1):
         """设置背光亮度 (0-100)"""
         if _brightness >= 0 and _brightness <= 100:
-            # 将0-100范围映射到0-1023 (PWM占空比)
-            duty = int(1023 * (100 - _brightness) / 100)
-            self._backlight.duty(duty)
+            from machine import PWM
+            if type(self._backlight) == PWM: # pwm设备
+                # 将0-100范围映射到0-1023 (PWM占空比)
+                duty = int(1023 * (100 - _brightness) / 100)
+                self._backlight.duty(duty)
+            elif _brightness == 0: # 关闭背光
+                self._backlight.on()
+            else: # 打开背光
+                self._backlight.off()
+                _brightness = 100
             self._brightness = _brightness
         return self._brightness
 

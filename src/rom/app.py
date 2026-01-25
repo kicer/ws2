@@ -187,9 +187,6 @@ async def animation_task():
 
                 # 每轮清理一次内存
                 gc.collect()
-                if current_frame == frame_count:
-                    # gc.collect()
-                    print(f"Memory: {gc.mem_free()}")
 
                 frame += 1
 
@@ -204,7 +201,7 @@ async def animation_task():
 
 def start():
     # 初始化液晶屏
-    display.init_display()
+    display.init_display(config.get("bl_mode") != "gpio")
     display.brightness(int(config.get("brightness", 10)))
     display.show_jpg("/rom/www/images/T1.jpg", 80, 80)
     gc.collect()
