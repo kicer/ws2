@@ -11,7 +11,7 @@ Usage:
     python image2bin.py <image_module> <output_binary>
 
 Example:
-    python image2bin.py logo.py logo.bin
+    python image2bin.py logo.py logo.img
 """
 
 import importlib.util
@@ -92,7 +92,12 @@ def write_binary_file(image_data, output_path):
 
 def create_info_file(image_data, output_path):
     """Create a text file with image information"""
-    info_path = output_path.replace(".bin", ".info")
+    # Extract the base filename without extension
+    base_name = os.path.splitext(os.path.basename(output_path))[0]
+    # Get the py directory path (assuming output_path is in bin directory)
+    bin_dir = os.path.dirname(output_path)
+    py_dir = os.path.join(os.path.dirname(bin_dir), "py")
+    info_path = os.path.join(py_dir, base_name + ".info")
     try:
         with open(info_path, "w") as f:
             f.write(f"Image Information\n")
@@ -107,7 +112,7 @@ def create_info_file(image_data, output_path):
                 f.write(f"Palette: None\n")
             f.write(f"Bitmap Size: {len(image_data['bitmap'])} bytes\n")
             f.write(
-                f"Total File Size: {os.path.getsize(output_path.replace('.info', '.bin'))} bytes\n"
+                f"Total File Size: {os.path.getsize(output_path.replace('.info', '.img'))} bytes\n"
             )
 
         print(f"Image information written to {info_path}")
@@ -120,7 +125,7 @@ def create_info_file(image_data, output_path):
 def main():
     if len(sys.argv) != 3:
         print("Usage: python image2bin.py <image_module> <output_binary>")
-        print("Example: python image2bin.py logo.py logo.bin")
+        print("Example: python image2bin.py logo.py logo.img")
         print(
             "\nThis converts Python image modules (from imgtobitmap.py) to streaming format."
         )

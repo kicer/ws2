@@ -72,7 +72,7 @@ display = st7789.ST7789(
 )
 
 # 加载流式字体
-font = st7789.streaming_font_mpy.StreamingFont("font.bin")
+font = st7789.streaming_font_mpy.StreamingFont("font.font")
 
 # 使用与普通字体相同的方式显示文字
 display.write(font, "你好，世界！", 10, 50, st7789.WHITE)
@@ -127,7 +127,7 @@ display = st7789.ST7789(
 )
 
 # 加载流式图片
-image = st7789.streaming_image.StreamingImage("image.bin")
+image = st7789.streaming_image.StreamingImage("image.img")
 
 # 显示图片
 display.bitmap(image, 0, 0, 0)
@@ -170,9 +170,9 @@ python font2bitmap.py NotoSansSC-Regular.otf 20 -s "你好世界0123456789"
 
 2. **将 Python 字体模块转换为二进制文件**：
 ```bash
-python font2bin.py 字体模块.py 输出文件.bin
+python font2bin.py 字体模块.py 输出文件.font
 # 示例
-python font2bin.py noto_sans_sc_20.py ch_font.bin
+python font2bin.py noto_sans_sc_20.py ch_font.font
 ```
 
 ### 图片转换流程
@@ -186,9 +186,9 @@ python image2bitmap.py python-logo.png 4
 
 2. **将 Python 图片模块转换为二进制文件**：
 ```bash
-python image2bin.py 图片模块.py 输出文件.bin
+python image2bin.py 图片模块.py 输出文件.img
 # 示例
-python image2bin.py python_logo.py logo.bin
+python image2bin.py python_logo.py logo.img
 ```
 
 ### 自动转换脚本
@@ -226,7 +226,7 @@ display = st7789.ST7789(
 )
 
 # 加载中文字体
-font = st7789.streaming_font_mpy.StreamingFont("ch_font.bin")
+font = st7789.streaming_font_mpy.StreamingFont("ch_font.font")
 
 # 显示文本
 display.write(font, "温度: 25.3°C", 10, 10, st7789.WHITE)
@@ -249,7 +249,7 @@ import time
 ...
 
 # 加载Logo图片
-logo = st7789.streaming_image.StreamingImage("logo.bin")
+logo = st7789.streaming_image.StreamingImage("logo.img")
 display.bitmap(logo, 60, 20, 0)
 logo.close()
 
@@ -285,8 +285,8 @@ WIFI_PASSWORD = "your_wifi_password"
 ...
 
 # 加载字体
-ch_font = st7789.streaming_font_mpy.StreamingFont("ch_font.bin")
-en_font = st7789.streaming_font_mpy.StreamingFont("en_font.bin")
+ch_font = st7789.streaming_font_mpy.StreamingFont("ch_font.font")
+en_font = st7789.streaming_font_mpy.StreamingFont("en_font.font")
 
 # 加载天气图标
 weather_icons = st7789.streaming_image.StreamingAnimation("weather_icon", 10)
@@ -386,10 +386,10 @@ finally:
 **A**: 使用 try-except 块捕获异常：
 ```python
 try:
-    font = st7789.streaming_font_mpy.StreamingFont("font.bin")
+    font = st7789.streaming_font_mpy.StreamingFont("font.font")
 except OSError:
     print("字体文件不存在，使用备用字体")
-    font = st7789.streaming_font_mpy.StreamingFont("fallback_font.bin")
+    font = st7789.streaming_font_mpy.StreamingFont("fallback_font.font")
 ```
 
 ### Q5: 流式加载支持哪些文件系统？
@@ -1064,10 +1064,10 @@ if __name__ == "__main__":
    import st7789.streaming_image
    
    # 加载流式字体
-   font = st7789.streaming_font_mpy.StreamingFont("ch_font_20.bin")
+   font = st7789.streaming_font_mpy.StreamingFont("ch_font_20.font")
    
    # 加载流式图片
-   image = st7789.streaming_image.StreamingImage("python_logo.bin")
+   image = st7789.streaming_image.StreamingImage("python_logo.img")
    
    # 使用...
    ```
