@@ -32,6 +32,16 @@ def parse_url_params(url):
     return params
 
 
+# ntp时钟同步
+def sync_ntp_time():
+    import ntptime
+
+    ntptime.host = config.get("ntphost", "ntp.ntsc.ac.cn")
+    t = ntptime.time() + 3600 * 8
+    tm = time.gmtime(t)
+    machine.RTC().datetime((tm[0], tm[1], tm[2], tm[6], tm[3], tm[4], tm[5], 0))
+
+
 # 简化的天气数据获取函数
 def get_weather_data(city=None, force=False):
     """获取天气数据，返回JSON格式数据
@@ -55,13 +65,10 @@ def get_weather_data(city=None, force=False):
         if city is None:
             city = config.get("city", "北京")
 
-        # 获取本地时间戳
-        ts0 = int(time.mktime(time.localtime()))
-
         # 从配置获取API基础URL，默认使用官方API
         api_base = config.get("weather_api_url", "https://iot.foresh.com/api/weather")
-        url = f"{api_base}?city={city}&ts={ts0}"
-        print(f"正在获取{city}天气数据，时间戳:{ts0}...")
+        url = f"{api_base}?city={city}"
+        print(f"正在获取{city}天气数据...")
 
         # 发送GET请求
         response = urequests.get(url)
@@ -71,17 +78,6 @@ def get_weather_data(city=None, force=False):
             # 解析JSON数据
             wdata = response.json()
             response.close()  # 关闭连接释放内存
-
-            # 如果服务器返回了时间戳，则同步本地时间
-            if "ts" in wdata and isinstance(wdata["ts"], (int, float)):
-                server_ts = int(wdata["ts"])
-                ts1 = int(time.mktime(time.localtime()))
-                # 检查时间戳差异，如果差异过大才同步
-                if abs(server_ts - ts1) > 30:  # >30s
-                    machine.RTC.datetime(time.localtime(server_ts + (ts1 - ts0) // 2))
-                    print(
-                        f"时间已同步: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}"
-                    )
 
             # 提取关键信息，减少内存占用
             weather_report = {
@@ -96,7 +92,6 @@ def get_weather_data(city=None, force=False):
                 "date": wdata.get("date", "N/A"),
                 "advice": wdata.get("advice", "N/A"),
                 "image": wdata.get("image", "N/A"),
-                "ts": ts,  # 添加时间戳用于同步本地时间
             }
 
             print("天气数据获取成功")
@@ -114,31 +109,48 @@ def get_weather_data(city=None, force=False):
         return None
 
 
-# 定时获取天气数据的任务
-async def weather_update_task():
-    """定时更新天气数据的后台任务"""
+# 定时调度任务（时间不敏感，但考虑错开以节约内存）
+async def sysinfo_update_task():
+    """定时后台任务"""
+    weather_ts = 2  # 启动2s后更新
+    ntptime_ts = 1  # 启动1s后更新
+    config_ts = 30  # 定时30s更新一次配置
 
-    # 获取更新间隔，默认10分钟
-    interval_minutes = int(config.get("weather_interval", 10))
-    interval_ms = interval_minutes * 60 * 1000  # 转换为毫秒
-
-    print(f"开始定时更新天气数据，间隔{interval_minutes}分钟")
-    await uasyncio.sleep_ms(1 * 1000)
+    # 初始化时间戳
+    start_ticks = time.ticks_ms()
+    last_weather = last_ntptime = last_config = start_ticks
 
     while True:
         try:
-            # 定期更新天气数据缓存
-            weather = get_weather_data()
-            if weather:
-                print("天气数据缓存已更新")
+            current_ticks = time.ticks_ms()
+            # 计算时间差，处理溢出
+            config_diff = time.ticks_diff(current_ticks, last_config)
+            weather_diff = time.ticks_diff(current_ticks, last_weather)
+            ntp_diff = time.ticks_diff(current_ticks, last_ntptime)
 
-            # 等待指定的间隔时间
-            await uasyncio.sleep_ms(interval_ms)
-
+            if config_diff >= config_ts * 1000:
+                # 重新读取配置
+                weather_ts = int(config.get("weather_ts", 600))  # 10min
+                ntptime_ts = int(config.get("ntptime_ts", 3600)) + 13  # 1hour
+                last_config = current_ticks
+            elif weather_diff >= weather_ts * 1000:
+                # 更新天气数据
+                gc.collect()
+                weather_ts = int(config.get("weather_ts", 600))  # 10min
+                get_weather_data(force=True)
+                last_weather = current_ticks
+            elif ntp_diff >= ntptime_ts * 1000:
+                # 更新NTP时间
+                gc.collect()
+                ntptime_ts = int(config.get("ntptime_ts", 3600)) + 13  # 1hour
+                sync_ntp_time()
+                last_ntptime = current_ticks
         except Exception as e:
-            print(f"天气更新任务出错: {e}")
-            # 出错后等待1分钟再重试
-            await uasyncio.sleep_ms(60 * 1000)
+            print(f"定时任务更新错误: {e}")
+
+        # 等待x秒再检查
+        _x = min(30, 1 + min(weather_ts, ntptime_ts) // 10)
+        await uasyncio.sleep(_x)
 
 
 # 精简的动画显示任务
@@ -323,8 +335,8 @@ def start():
     loop = uasyncio.get_event_loop()
     loop.create_task(naw.run())
 
-    # 启动定时天气更新任务
-    loop.create_task(weather_update_task())
+    # 启动定时更新任务
+    loop.create_task(sysinfo_update_task())
 
     # 启动动画显示任务
     loop.create_task(animation_task())
