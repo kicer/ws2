@@ -38,8 +38,11 @@ def sync_ntp_time():
 
     ntptime.host = config.get("ntphost", "ntp.ntsc.ac.cn")
     t = ntptime.time() + 3600 * 8
+
+    rtc = machine.RTC()
     tm = time.gmtime(t)
-    machine.RTC().datetime((tm[0], tm[1], tm[2], tm[6], tm[3], tm[4], tm[5], 0))
+    rtc.datetime((tm[0], tm[1], tm[2], tm[6], tm[3], tm[4], tm[5], 0))
+    print(f"时间同步：{rtc.datetime()}")
 
 
 # 简化的天气数据获取函数
@@ -114,7 +117,7 @@ async def sysinfo_update_task():
     """定时后台任务"""
     weather_ts = 2  # 启动2s后更新
     ntptime_ts = 1  # 启动1s后更新
-    config_ts = 30  # 定时30s更新一次配置
+    config_ts = 60  # 定时60s更新一次配置
 
     # 初始化时间戳
     start_ticks = time.ticks_ms()
@@ -128,12 +131,7 @@ async def sysinfo_update_task():
             weather_diff = time.ticks_diff(current_ticks, last_weather)
             ntp_diff = time.ticks_diff(current_ticks, last_ntptime)
 
-            if config_diff >= config_ts * 1000:
-                # 重新读取配置
-                weather_ts = int(config.get("weather_ts", 600))  # 10min
-                ntptime_ts = int(config.get("ntptime_ts", 3600)) + 13  # 1hour
-                last_config = current_ticks
-            elif weather_diff >= weather_ts * 1000:
+            if weather_diff >= weather_ts * 1000:
                 # 更新天气数据
                 gc.collect()
                 weather_ts = int(config.get("weather_ts", 600))  # 10min
@@ -145,10 +143,15 @@ async def sysinfo_update_task():
                 ntptime_ts = int(config.get("ntptime_ts", 3600)) + 13  # 1hour
                 sync_ntp_time()
                 last_ntptime = current_ticks
+            elif config_diff >= config_ts * 1000:
+                # 重新读取配置
+                weather_ts = int(config.get("weather_ts", 600))  # 10min
+                ntptime_ts = int(config.get("ntptime_ts", 3600)) + 13  # 1hour
+                last_config = current_ticks
         except Exception as e:
             print(f"定时任务更新错误: {e}")
 
-        # 等待x秒再检查
+        # 等待x秒再检查（1~30）
         _x = min(30, 1 + min(weather_ts, ntptime_ts) // 10)
         await uasyncio.sleep(_x)
 
