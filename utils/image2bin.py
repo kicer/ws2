@@ -29,13 +29,21 @@ def read_image_module(module_path):
         spec.loader.exec_module(image_module)
 
         # Extract image metadata and data
+        bitmap_obj = image_module._bitmap
+
+        try:
+            bitmap_bytes = bytes(bitmap_obj)
+        except Exception as e:
+            print(f"Error converting bitmap to bytes: {e}", file=sys.stderr)
+            bitmap_bytes = b"\x00"  # Fallback
+
         image_data = {
             "width": image_module.WIDTH,
             "height": image_module.HEIGHT,
             "colors": image_module.COLORS,
             "bpp": image_module.BPP,
             "palette": getattr(image_module, "PALETTE", []),
-            "bitmap": bytes(image_module._bitmap),
+            "bitmap": bitmap_bytes,
         }
 
         return image_data
@@ -52,14 +60,21 @@ def write_binary_file(image_data, output_path):
             f.write(b"IMG ")  # Magic number ("IMG " with trailing space)
             f.write(struct.pack("H", image_data["width"]))  # Image width
             f.write(struct.pack("H", image_data["height"]))  # Image height
-            f.write(struct.pack("B", image_data["colors"]))  # Number of colors
+            # Limit colors to ubyte range (0-255)
+            colors_val = min(image_data["colors"], 255)
+            f.write(struct.pack("B", colors_val))  # Number of colors
             f.write(struct.pack("B", image_data["bpp"]))  # Bits per pixel
 
             # Write palette
             if image_data["palette"]:
-                f.write(struct.pack("B", len(image_data["palette"])))  # Palette length
-                for color in image_data["palette"]:
-                    f.write(struct.pack("H", color))  # RGB565 color value
+                palette_length = min(
+                    len(image_data["palette"]), 255
+                )  # Limit to ubyte range
+                f.write(struct.pack("B", palette_length))  # Palette length
+                for i in range(palette_length):
+                    f.write(
+                        struct.pack("H", image_data["palette"][i])
+                    )  # RGB565 color value
             else:
                 f.write(struct.pack("B", 0))  # Zero palette length
 
