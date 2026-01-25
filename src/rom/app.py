@@ -241,6 +241,7 @@ def start():
                     ),
                     "uptime": str(f"{time.ticks_ms() // 1000} sec"),
                     "memory": str(f"{gc.mem_free() // 1000} KB"),
+                    "uuid": str(machine.unique_id().hex()),
                     "platform": str(sys.platform),
                     "version": str(sys.version),
                 }
@@ -291,6 +292,32 @@ def start():
             for k, v in json.loads(post_data).items():
                 if k == "brightness":
                     display.brightness(int(v))
+        except Exception as e:
+            ack["status"] = "error"
+            ack["message"] = str(e)
+        finally:
+            await request.write(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
+            )
+            await request.write(json.dumps(ack))
+
+    # /exec: 执行命令并返回
+    # {"cmd":"import network;R=network.WLAN().config(\"mac\").hex()", "token":"xxx"}
+    @naw.route("/exec")
+    async def eval_cmd(request):
+        ack = {"status": "success"}
+        try:
+            if request.method != "POST":
+                raise Exception("invalid request")
+            content_length = int(request.headers["Content-Length"])
+            post_data = (await request.read(content_length)).decode()
+
+            cmd = json.loads(post_data).get("cmd")
+            token = json.loads(post_data).get("token")
+            if cmd and token == machine.unique_id().hex():
+                _NS = {}
+                exec(cmd, _NS)
+                ack["result"] = str(_NS.get("R"))
         except Exception as e:
             ack["status"] = "error"
             ack["message"] = str(e)
