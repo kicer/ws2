@@ -47,18 +47,18 @@ class CaptivePortal:
             return True
         return False
 
-    def check_valid_wifi(self):
+    def check_valid_wifi(self, callback):
         if not wifi_manager.is_connected():
             if config.is_valid():
                 # have credentials to connect, but not yet connected
                 # return value based on whether the connection was successful
-                return self.connect_to_wifi()
+                return True
             # not connected, and no credentials to connect yet
             return False
 
         return True
 
-    def captive_portal(self):
+    def captive_portal(self, callback):
         print("Starting captive portal")
         self.start_access_point()
 
@@ -77,9 +77,9 @@ class CaptivePortal:
                     sock, event, *others = response
                     is_handled = self.handle_dns(sock, event, others)
                     if not is_handled:
-                        self.handle_http(sock, event, others)
+                        callback(self.handle_http(sock, event, others))
 
-                if self.check_valid_wifi():
+                if self.check_valid_wifi(callback):
                     print("Connected to WiFi!")
                     self.http_server.stop(self.poller)
                     self.dns_server.stop(self.poller)
@@ -100,7 +100,7 @@ class CaptivePortal:
         return False
 
     def handle_http(self, sock, event, others):
-        self.http_server.handle(sock, event, others)
+        return self.http_server.handle(sock, event, others)
 
     def cleanup(self):
         print("Cleaning up")
@@ -126,8 +126,8 @@ class CaptivePortal:
         print("Connection failed but keeping configuration for retry")
         return False
 
-    def start(self):
+    def start(self, callback):
         # turn off station interface to force a reconnect
         wifi_manager.disconnect()
         if not self.try_connect_from_file():
-            return self.captive_portal()
+            return self.captive_portal(callback)

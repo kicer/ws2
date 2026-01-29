@@ -70,15 +70,15 @@ class HTTPServer(BaseServer):
         if sock is self.sock:
             # client connecting on port 80, so spawn off a new
             # socket to handle this connection
-            print("- Accepting new HTTP connection")
+            # print("- Accepting new HTTP connection")
             self.accept(sock)
         elif event & select.POLLIN:
             # socket has data to read in
-            print("- Reading incoming HTTP data")
-            self.read(sock)
+            # print("- Reading incoming HTTP data")
+            return self.read(sock)
         elif event & select.POLLOUT:
             # existing connection has space to send more data
-            print("- Sending outgoing HTTP data")
+            # print("- Sending outgoing HTTP data")
             self.write_to(sock)
 
     def accept(self, server_sock):
@@ -217,6 +217,7 @@ class HTTPServer(BaseServer):
         # host and a valid route
         body, headers = self.get_response(req)
         self.prepare_write(s, body, headers)
+        return req.path
 
     def prepare_write(self, s, body, headers):
         # add newline to headers to signify transition to body

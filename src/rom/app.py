@@ -198,6 +198,16 @@ async def animation_task():
     except Exception as e:
         print(f"动画任务初始化失败: {e}")
 
+def cb_progress(data):
+    if isinstance(data, bytes):
+        if data == b'/':
+            display.portal_info('load iwconfig page    ')
+        elif data == b'/login':
+            display.portal_info('WiFi connecting ...   ')
+    elif isinstance(data, str):
+        display.message(data, 19, 204)
+
+    if data: print(f'progress: {str(data)}')
 
 def start():
     # 初始化液晶屏
@@ -207,12 +217,14 @@ def start():
     gc.collect()
     display.message("WiFi connect ...")
 
-    if not wifi_manager.connect():
+    if not wifi_manager.connect(cb_progress):
         gc.collect()
         from captive_portal import CaptivePortal
         portal = CaptivePortal()
         display.portal_win(portal.essid.decode('ascii'))
-        return portal.start()
+        portal.start(cb_progress)
+        # just reboot
+        machine.reset()
 
     gc.collect()
 

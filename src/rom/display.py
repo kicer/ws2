@@ -29,6 +29,7 @@ class Display:
             self._backlight = None
             self._brightness = 80  # 默认亮度80%
             self._initialized = True
+            self._pos_y0 = 10
             self.en_font = '/rom/fonts/en-8x16.rfont'
             self.cn_font = '/rom/fonts/cn-22x24.bfont'
             self.vector_font = '/rom/fonts/en-32x32.hfont'
@@ -77,6 +78,7 @@ class Display:
     def clear(self, color=st7789.BLACK):
         """清屏"""
         self.tft.fill(color)
+        self._pos_y0 = 10
 
     def show_jpg(self, filename, x=0, y=0, mode=st7789.SLOW):
         """显示JPG图片"""
@@ -98,8 +100,14 @@ class Display:
             self._brightness = _brightness
         return self._brightness
 
-    def message(self, msg, x=10, y=10, fg=st7789.WHITE, bg=st7789.BLACK):
+    def message(self, msg, x=10, y=None, fg=st7789.WHITE, bg=st7789.BLACK):
+        if y == None:
+            y = self._pos_y0
         self.tft.text(self.en_font, msg, x, y, fg, bg)
+        # 每次打印完消息则滚动到下一行
+        self._pos_y0 += 20
+        if self._pos_y0 >= 240-20:
+            self._pos_y0 = 10
 
     def window(self, title=None, content=None, info=None):
         C_FG,C_BG,C_BT = self._COLORS
@@ -117,6 +125,9 @@ class Display:
             if line:
                 self.tft.write(self.cn_font, line, 19, 68+i*28, C_FG, C_BG)
 
+    def portal_info(self, msg):
+        C_FG,C_BG,C_BT = self._COLORS
+        self.tft.text(self.en_font, msg, 19, 204, C_FG, C_BT)
     def portal_win(self, ssid):
         tips = [
             "> 连接热点:",

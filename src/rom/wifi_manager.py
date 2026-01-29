@@ -48,7 +48,7 @@ class WiFiManager:
                 return None
         return None
 
-    def connect(self):
+    def connect(self, callback=None):
         """尝试连接到WiFi"""
         # 加载配置
         if not self.config.is_valid():
@@ -86,7 +86,8 @@ class WiFiManager:
                         print(f"Connected successfully! IP: {ip}")
                         return True
 
-                print(f"Connection attempt {attempts}/{self.MAX_CONN_ATTEMPTS}...")
+                # print(f"Connection attempt {attempts}/{self.MAX_CONN_ATTEMPTS}...")
+                if callback: callback(f"WiFi connect {attempts} ...")
                 time.sleep(2)
                 attempts += 1
 
