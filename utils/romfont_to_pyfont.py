@@ -17,13 +17,14 @@ import os
 import re
 import argparse
 
-def convert_font(file_in, file_out, width, height, first=0x0, last=0xff):
+def convert_font(file_in, file_out, width, height, first=0x0, last=0xff, font_type="rom"):
     chunk_size = height
     with open(file_in, "rb") as bin_file:
         bin_file.seek(first * height)
         current = first
         with open(file_out, 'wt') as font_file:
             print(f'"""converted from {file_in} """', file=font_file)
+            print(f"FONT_TYPE = {font_type}", file=font_file)
             print(f'WIDTH = {width}', file=font_file)
             print(f'HEIGHT = {height}', file=font_file)
             print(f'FIRST = 0x{first:02x}', file=font_file)

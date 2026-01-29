@@ -177,7 +177,7 @@ async def animation_task():
             try:
                 # 计算当前帧号(1-20)
                 current_frame = (frame % frame_count) + 1
-                filename = f"/rom/www/images/T{current_frame}.jpg"
+                filename = f"/rom/images/T{current_frame}.jpg"
 
                 # 显示当前帧，右下角
                 display.show_jpg(filename, 160, 160)
@@ -203,15 +203,17 @@ def start():
     # 初始化液晶屏
     display.init_display(config.get("bl_mode") != "gpio")
     display.brightness(int(config.get("brightness", 10)))
-    display.show_jpg("/rom/www/images/T1.jpg", 80, 80)
+    display.show_jpg("/rom/images/T1.jpg", 80, 80)
     gc.collect()
+    display.message("WiFi connect ...")
 
     if not wifi_manager.connect():
-        print("Failed to connect to WiFi, starting CaptivePortal for configuration")
+        gc.collect()
         from captive_portal import CaptivePortal
-
         portal = CaptivePortal()
+        display.portal_win(portal.essid.decode('ascii'))
         return portal.start()
+
     gc.collect()
 
     # init web server
@@ -368,7 +370,8 @@ def start():
     # 启动动画显示任务
     loop.create_task(animation_task())
 
-    # run!
     gc.collect()
-    print(f"App Memory Free: {gc.mem_free()}")
+    display.message(f"success: {gc.mem_free()}...")
+
+    # run!
     loop.run_forever()
