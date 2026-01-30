@@ -5,10 +5,9 @@
 适用于ESP8266等内存有限的平台。
 """
 
-import gc
-
-import st7789
-
+def _print_mem():
+    import gc
+    gc.collect(); print(f'LCD.mem: {gc.mem_free()}')
 
 class Display:
     """液晶屏管理类 - 单例模式"""
@@ -34,6 +33,7 @@ class Display:
             self.vector_font = '/rom/fonts/en.hfont'
             self.cn_font = '/rom/fonts/cn.bfont'
             self.time_font = '/rom/fonts/time.bfont'
+            self.bootimg = '/rom/images/T0.jpg'
             # 前景色、背景色、提示框背景色
             self._COLORS = (0xFE19, 0x0000, 0x7800)
             self.ui_type = 'default'
@@ -45,9 +45,10 @@ class Display:
         """初始化液晶屏，默认2048够用且不易有内存碎片"""
         try:
             from machine import PWM, SPI, Pin
+            from st7789 import ST7789
 
             # 初始化显示屏
-            self.tft = st7789.ST7789(
+            self.tft = ST7789(
                 SPI(1, 40_000_000, polarity=1),
                 240,
                 240,
@@ -65,13 +66,14 @@ class Display:
 
             # 初始化并清屏
             self.tft.init()
-            gc.collect()
-            self.tft.fill(st7789.BLACK)
-            print("液晶屏初始化成功")
+            self.tft.fill(0)
+            display.show_jpg(self.bootimg, 80, 80)
+
+            _print_mem()
             return True
 
         except Exception as e:
-            print(f"液晶屏初始化失败: {e}")
+            print(f"LCD init failed: {e}")
             self.tft = None
             self._backlight = None
             return False
@@ -80,13 +82,13 @@ class Display:
         """检查液晶屏是否已初始化"""
         return self.tft is not None
 
-    def clear(self, color=st7789.BLACK):
+    def clear(self, color=0):
         """清屏"""
         self.tft.fill(color)
         self._pos_y0 = 10
 
-    def show_jpg(self, filename, x=0, y=0, mode=st7789.SLOW):
-        """显示JPG图片"""
+    def show_jpg(self, filename, x=0, y=0, mode=1):
+        """显示JPG图片, 默认SLOW模式"""
         self.tft.jpg(filename, x, y, mode)
 
     def brightness(self, _brightness=-1):
@@ -105,7 +107,7 @@ class Display:
             self._brightness = _brightness
         return self._brightness
 
-    def message(self, msg, x=10, y=None, fg=st7789.WHITE, bg=st7789.BLACK):
+    def message(self, msg, x=10, y=None, fg=0xFFFF, bg=0):
         if y == None:
             y = self._pos_y0
         self.tft.text(self.en_font, msg, x, y, fg, bg)
@@ -152,9 +154,9 @@ class Display:
                 if self.tft.write(self.cn_font, city, 15,10) == 0:
                     # 城市可能未包括，则显示??
                     self.tft.write(self.cn_font, '??', 15,10)
-            # 天气符号: 0-7 (晴、云、雨、雷、雪、雾、风、未知)
+            # 天气符号: 0-7 (未知、晴、云、雨、雷、雪、雾、风)
             if weather is not None and weather != self.ui_data.get('weather'):
-                self.tft.jpg(f"/rom/images/{weather}.jpg",165,10,st7789.SLOW)
+                self.show_jpg(f"/rom/images/{weather}.jpg",165,10)
                 self.ui_data['weather'] = weather
             # 建议信息可能有很多条，需要轮换展示
             if advice is not None and advice != self.ui_data.get('advice'):
@@ -191,7 +193,7 @@ class Display:
                     # 如果co2数据存在，优先显示co2
                     if self.ui_data.get('ap'):
                         self.ui_data['ap'] = None
-                        self.tft.jpg("/rom/images/co2.jpg",85,209,st7789.SLOW)
+                        self.show_jpg("/rom/images/co2.jpg",85,209)
                     self.ui_data['co2'] = co2
                     self.tft.fill_rect(110,213,40,16,0)
                     self.tft.draw(self.vector_font, str(co2), 110,221,0xFFFF,0.5)
@@ -216,13 +218,16 @@ class Display:
                 w = self.tft.write(self.cn_font, f'{lunar} 星期{w}', 15,135)
             else:
                 w = self.tft.write(self.cn_font, f'{m:2d}月{d:2d}日 星期{w}', 15,135)
-            print(f'todo: fill date.tail: {w}')
+            if w<22*9: # fill
+                self.tft.fill_rect(15+w,135,22*9-w,22,0)
             # 处理时间显示
             if H != self.ui_data.get('hour'):
                 self.ui_data['hour'] = H
+                self.tft.fill_rect(25,80,110,48,0)
                 self.tft.write(self.time_font,f'{H:02d}:',25,80,0xF080)
             if M != self.ui_data.get('minute'):
                 self.ui_data['minute'] = M
+                self.tft.fill_rect(135,80,90,48,0)
                 self.tft.write(self.time_font,f'{M:02d}',135,80,0xFF80)
             # 处理建议显示
             advice = self.ui_data.get('advice')
@@ -230,7 +235,10 @@ class Display:
                 i = self.ticks % len(advice)
                 c = advice[i]
                 w = self.tft.write(self.cn_font, advice[i], 15,45)
-                print(f'todo: fill advice.tail: {w}')
+                if w<22*6: # fill
+                    self.tft.fill_rect(15+w,45,22*6-w,22,0)
+        # 打印内存信息
+        _print_mem()
 
     # 初始化ui固定元素
     def load_ui(self):
@@ -238,10 +246,10 @@ class Display:
             # 默认黑色背景 
             self.tft.fill(0)
             # 固定的环境数据图标
-            self.tft.jpg("/rom/images/t.jpg",11,177,st7789.SLOW)
-            self.tft.jpg("/rom/images/rh.jpg",85,177,st7789.SLOW)
-            self.tft.jpg("/rom/images/pm.jpg",11,209,st7789.SLOW)
-            self.tft.jpg("/rom/images/ap.jpg",85,209,st7789.SLOW)
+            self.show_jpg("/rom/images/t.jpg",11,177)
+            self.show_jpg("/rom/images/rh.jpg",85,177)
+            self.show_jpg("/rom/images/pm.jpg",11,209)
+            self.show_jpg("/rom/images/ap.jpg",85,209)
 
         # 更新其他默认数据
         self.update_ui()

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # 连接并打印文件列表
-mpremote connect /dev/tty.wchusbserial14310 ls
+mpremote ls
 
 # 生成romfs文件系统并上传
 mpremote romfs deploy src/rom

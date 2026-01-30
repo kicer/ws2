@@ -7,7 +7,7 @@ import sys
 import time
 
 import machine
-import uasyncio
+import asyncio
 from config import config
 from display import display  # 导入液晶屏管理模块
 from wifi_manager import wifi_manager
@@ -15,6 +15,8 @@ from wifi_manager import wifi_manager
 # 全局变量存储最新的天气数据
 latest_weather = None
 
+def uuid():
+    return str(machine.unique_id().hex())
 
 def parse_url_params(url):
     # 解析URL中的查询参数，返回参数字典
@@ -42,11 +44,13 @@ def sync_ntp_time():
     rtc = machine.RTC()
     tm = time.gmtime(t)
     rtc.datetime((tm[0], tm[1], tm[2], tm[6], tm[3], tm[4], tm[5], 0))
+
+    # 同步完成后，等待调度自动更新UI
     print(f"时间同步：{rtc.datetime()}")
 
 
 # 简化的天气数据获取函数
-def get_weather_data(city=None, force=False):
+async def get_weather_data(city=None, force=False):
     """获取天气数据，返回JSON格式数据
 
     Args:
@@ -62,50 +66,50 @@ def get_weather_data(city=None, force=False):
         return latest_weather
 
     try:
-        import urequests
+        import aiohttp
 
         # 从配置文件获取城市，如果没有提供则使用配置中的值
         if city is None:
             city = config.get("city", "北京")
 
-        # 从配置获取API基础URL，默认使用官方API
-        api_base = config.get("weather_api_url", "https://iot.foresh.com/api/weather")
-        url = f"{api_base}?city={city}"
         print(f"正在获取{city}天气数据...")
+        # 从配置获取API基础URL，默认使用官方API
+        url = config.get("weather_api_url", "http://esp.tangofu.com/api/sd2/")
+        params={'uuid':uuid(), 'city':city}
 
         # 发送GET请求
-        response = urequests.get(url)
+        print('start http')
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params) as response:
+                print('ACK=%s'%response.status)
+                # 检查响应状态
+                if response.status == 200:
+                    # 解析JSON数据
+                    wdata = await response.json()
 
-        # 检查响应状态
-        if response.status_code == 200:
-            # 解析JSON数据
-            wdata = response.json()
-            response.close()  # 关闭连接释放内存
+                    # 提取关键信息，减少内存占用
+                    city = wdata.get("city", "N/A")
+                    weather = wdata.get("weather", 0)
+                    t = wdata.get("temperature", "-")
+                    rh = wdata.get("humidity", "-")
+                    pm = wdata.get("pm25", "-")
+                    ap = wdata.get("atmosp", None)
+                    co2 = wdata.get("co2", None)
+                    aqi = wdata.get("aqi", 0)
+                    advice = wdata.get("advice", [])
+                    lunar = wdata.get("lunar", None)
 
-            # 提取关键信息，减少内存占用
-            weather_report = {
-                "t": wdata.get("temperature", "N/A"),
-                "rh": wdata.get("humidity", "N/A"),
-                "pm25": wdata.get("pm25", "N/A"),
-                "weather": wdata.get("weather", "N/A"),
-                "t_min": wdata.get("t_min", "N/A"),
-                "t_max": wdata.get("t_max", "N/A"),
-                "city": wdata.get("city", "N/A"),
-                "aqi": wdata.get("aqi", "N/A"),
-                "date": wdata.get("date", "N/A"),
-                "advice": wdata.get("advice", "N/A"),
-                "image": wdata.get("image", "N/A"),
-            }
+                    display.update_ui(city, weather, advice, aqi, lunar,
+                        envdat={'t':t,'rh':rh,'co2':co2,'pm':pm,'ap':ap})
 
-            print("天气数据获取成功")
-            # 更新缓存
-            latest_weather = weather_report
+                    # 更新缓存
+                    latest_weather = display.ui_data
+                    print("天气数据获取成功")
 
-            return weather_report
-        else:
-            print(f"获取天气数据失败，状态码: {response.status_code}")
-            response.close()
-            return None
+                    return latest_weather
+                else:
+                    print(f"获取天气数据失败，状态码: {response.status}")
+                    return None
 
     except Exception as e:
         print(f"获取天气数据出错: {e}")
@@ -134,9 +138,10 @@ async def sysinfo_update_task():
                 # 更新天气数据
                 gc.collect()
                 task_id = "weather"
-                get_weather_data(force=True)
+                await get_weather_data(force=True)
                 last_weather = current_ticks
-                weather_ts = int(config.get("weather_ts", 600))  # 10min
+                #todo:weather_ts = int(config.get("weather_ts", 600))  # 10min
+                weather_ts = int(config.get("weather_ts", 6))  # 10min
             elif ntp_diff >= ntptime_ts * 1000:
                 # 更新NTP时间
                 gc.collect()
@@ -153,11 +158,11 @@ async def sysinfo_update_task():
 
         # 等待x秒再检查（1~30）
         _x = min(30, 1 + min(weather_ts, ntptime_ts) // 10)
-        await uasyncio.sleep(_x)
+        await asyncio.sleep(_x)
 
 
-# 精简的动画显示任务
-async def animation_task():
+# LCD UI显示任务
+async def ui_task():
     """显示JPG动画的后台任务"""
     # 检查液晶屏是否已初始化
     if not display.is_ready():
@@ -165,35 +170,37 @@ async def animation_task():
         return
 
     try:
-        # 动画参数
-        frame_count = 20
-        frame_delay = 100  # 帧延迟(毫秒)
+        # 延迟2s后开始更新
+        await asyncio.sleep_ms(2 * 1000)
 
-        await uasyncio.sleep_ms(2 * 1000)
-        print(f"开始JPG动画，帧延迟: {frame_delay}ms")
-
-        frame = 0
+        F = 0
         while True:
             try:
-                # 计算当前帧号(1-20)
-                current_frame = (frame % frame_count) + 1
-                filename = f"/rom/images/T{current_frame}.jpg"
+                t0 = time.ticks_ms()
 
-                # 显示当前帧，右下角
-                display.show_jpg(filename, 160, 160)
+                # 计算当前帧号(1-10)，更新动画
+                cframe = (F % 10)
+                pic = f"/rom/images/T{cframe}.jpg"
+                display.show_jpg(pic, 160, 160)
 
-                # 控制帧率
-                await uasyncio.sleep_ms(frame_delay)
+                # 每隔100帧，更新一次UI显示
+                F += 1
+                if F % 100 == 0:
+                    display.update_ui()
 
                 # 每轮清理一次内存
                 gc.collect()
 
-                frame += 2
+                # 控制帧率
+                now = time.ticks_ms()
+                ts = time.ticks_diff(now, t0)
+                _sT = (100-ts) if ts<90 else 10
+                await asyncio.sleep_ms(_sT)
 
             except Exception as e:
                 print(f"动画帧错误: {e}")
                 # 出错后等待1秒再继续
-                await uasyncio.sleep_ms(1000)
+                await asyncio.sleep_ms(1000)
 
     except Exception as e:
         print(f"动画任务初始化失败: {e}")
@@ -214,8 +221,6 @@ def start():
     #display.init_display(config.get("bl_mode") != "gpio")
     display.init_display(False, buffer_size=5000)
     display.brightness(int(config.get("brightness", 10)))
-    display.show_jpg("/rom/images/T1.jpg", 80, 80)
-    gc.collect()
     cb_progress("WiFi connect ...")
 
     if not wifi_manager.connect(cb_progress):
@@ -257,7 +262,7 @@ def start():
                     ),
                     "uptime": str(f"{time.ticks_ms() // 1000} sec"),
                     "memory": str(f"{gc.mem_free() // 1000} KB"),
-                    "uuid": str(machine.unique_id().hex()),
+                    "uuid": uuid,
                     "platform": str(sys.platform),
                     "version": str(sys.version),
                 }
@@ -330,7 +335,7 @@ def start():
 
             cmd = json.loads(post_data).get("cmd")
             token = json.loads(post_data).get("token")
-            if cmd and token == machine.unique_id().hex():
+            if cmd and token == uuid:
                 _NS = {}
                 exec(cmd, _NS)
                 ack["result"] = str(_NS.get("R"))
@@ -375,14 +380,14 @@ def start():
             await request.write(json.dumps(ack))
 
     # create task
-    loop = uasyncio.get_event_loop()
+    loop = asyncio.get_event_loop()
     loop.create_task(naw.run())
 
     # 启动定时更新任务
     loop.create_task(sysinfo_update_task())
 
     # 启动动画显示任务
-    loop.create_task(animation_task())
+    loop.create_task(ui_task())
 
     gc.collect()
     print(f"success: {gc.mem_free()}...")
