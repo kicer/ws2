@@ -173,6 +173,7 @@ class Display:
             if envdat is not None:
                 t,rh = envdat.get('t'),envdat.get('rh')
                 pm,ap = envdat.get('pm'),envdat.get('ap')
+                co2 = envdat.get('co2')
                 # 填充后再更新文本
                 if t is not None and t != self.ui_data.get('t'):
                     self.ui_data['t'] = t
@@ -186,7 +187,16 @@ class Display:
                     self.ui_data['pm'] = pm
                     self.tft.fill_rect(35,213,40,16,0)
                     self.tft.draw(self.vector_font, str(pm), 35,221,0xFFFF,0.5)
-                if ap is not None and ap != self.ui_data.get('ap'):
+                if co2 is not None and co2 != self.ui_data.get('co2'):
+                    # 如果co2数据存在，优先显示co2
+                    if self.ui_data.get('ap'):
+                        self.ui_data['ap'] = None
+                        self.tft.jpg("/rom/images/co2.jpg",85,209,st7789.SLOW)
+                    self.ui_data['co2'] = co2
+                    self.tft.fill_rect(110,213,40,16,0)
+                    self.tft.draw(self.vector_font, str(co2), 110,221,0xFFFF,0.5)
+                elif self.ui_data.get('co2') is None and ap is not None and ap != self.ui_data.get('ap'):
+                    # 没co2时候才会显示大气压
                     self.ui_data['ap'] = ap
                     self.tft.fill_rect(110,213,40,16,0)
                     self.tft.draw(self.vector_font, str(ap), 110,221,0xFFFF,0.5)
@@ -231,7 +241,7 @@ class Display:
             self.tft.jpg("/rom/images/t.jpg",11,177,st7789.SLOW)
             self.tft.jpg("/rom/images/rh.jpg",85,177,st7789.SLOW)
             self.tft.jpg("/rom/images/pm.jpg",11,209,st7789.SLOW)
-            self.tft.jpg("/rom/images/ap.jpg",85,208,st7789.SLOW)
+            self.tft.jpg("/rom/images/ap.jpg",85,209,st7789.SLOW)
 
         # 更新其他默认数据
         self.update_ui()
