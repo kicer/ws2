@@ -167,7 +167,7 @@ async def animation_task():
     try:
         # 动画参数
         frame_count = 20
-        frame_delay = 10  # 帧延迟(毫秒)
+        frame_delay = 100  # 帧延迟(毫秒)
 
         await uasyncio.sleep_ms(2 * 1000)
         print(f"开始JPG动画，帧延迟: {frame_delay}ms")
@@ -188,7 +188,7 @@ async def animation_task():
                 # 每轮清理一次内存
                 gc.collect()
 
-                frame += 1
+                frame += 2
 
             except Exception as e:
                 print(f"动画帧错误: {e}")
@@ -211,11 +211,12 @@ def cb_progress(data):
 
 def start():
     # 初始化液晶屏
-    display.init_display(config.get("bl_mode") != "gpio")
+    #display.init_display(config.get("bl_mode") != "gpio")
+    display.init_display(False, buffer_size=5000)
     display.brightness(int(config.get("brightness", 10)))
     display.show_jpg("/rom/images/T1.jpg", 80, 80)
     gc.collect()
-    display.message("WiFi connect ...")
+    cb_progress("WiFi connect ...")
 
     if not wifi_manager.connect(cb_progress):
         gc.collect()
@@ -227,6 +228,7 @@ def start():
         machine.reset()
 
     gc.collect()
+    display.load_ui()
 
     # init web server
     from rom.nanoweb import Nanoweb
@@ -289,7 +291,7 @@ def start():
         lcd_status = {
             "ready": display.is_ready(),
             "brightness": display.brightness(),
-            "ui_type": config.get("ui_type", "default"),
+            "ui_type": display.ui_type,
         }
         await request.write(json.dumps(lcd_status))
 
@@ -383,7 +385,7 @@ def start():
     loop.create_task(animation_task())
 
     gc.collect()
-    display.message(f"success: {gc.mem_free()}...")
+    print(f"success: {gc.mem_free()}...")
 
     # run!
     loop.run_forever()

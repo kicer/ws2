@@ -148,10 +148,10 @@ def convert_to_bfont(namespace, input_file, output_file=None):
         "bpp": bpp,  # Store BPP value
     }
 
-    # Update output filename if needed (only if it doesn't already include dimensions)
-    if output_file and not output_file.endswith(f"-{width}x{height}.bfont"):
+    # Update output filename if needed
+    if output_file and os.path.isdir(output_file):
         base_name = os.path.splitext(os.path.basename(input_file))[0]
-        output_dir = os.path.dirname(output_file)
+        output_dir = output_file
         output_name = f"{base_name}-{width}x{height}.bfont"
         output_file = os.path.join(output_dir, output_name)
 
@@ -221,10 +221,10 @@ def convert_to_hfont(namespace, input_file, output_file=None):
             if size > max_char_size:
                 max_char_size = size
 
-    # Update output filename if needed (only if it doesn't already include dimensions)
-    if output_file and not output_file.endswith(f"-{width}x{height}.hfont"):
+    # Update output filename if needed
+    if output_file and os.path.isdir(output_file):
         base_name = os.path.splitext(os.path.basename(input_file))[0]
-        output_dir = os.path.dirname(output_file)
+        output_dir = output_file
         output_name = f"{base_name}-{width}x{height}.hfont"
         output_file = os.path.join(output_dir, output_name)
 
@@ -293,10 +293,10 @@ def convert_to_rfont(namespace, input_file, output_file=None):
     bytes_per_line = (width + 7) // 8
     bytes_per_char = bytes_per_line * height
 
-    # Update output filename if needed (only if it doesn't already include dimensions)
-    if output_file and not output_file.endswith(f"-{width}x{height}.rfont"):
+    # Update output filename if needed
+    if output_file and os.path.isdir(output_file):
         base_name = os.path.splitext(os.path.basename(input_file))[0]
-        output_dir = os.path.dirname(output_file)
+        output_dir = output_file
         output_name = f"{base_name}-{width}x{height}.rfont"
         output_file = os.path.join(output_dir, output_name)
 
@@ -411,7 +411,7 @@ def convert_to_binary(input_file, output_file=None):
             else:
                 output_path = os.path.dirname(input_file)
 
-            output_name = ""  # Will be set by each conversion function
+            output_file = output_path
 
         # Parse the pyfont file using exec()
         namespace = {}
@@ -421,6 +421,7 @@ def convert_to_binary(input_file, output_file=None):
         # Detect the font type
         font_type = detect_font_type(namespace, input_file)
 
+        '''
         # Generate default output file name if not provided or directory specified
         if output_file is None:
             base_name = os.path.splitext(os.path.basename(input_file))[0]
@@ -452,6 +453,7 @@ def convert_to_binary(input_file, output_file=None):
                 output_name = f"{base_name}.bin"
 
             output_file = os.path.join(output_path, output_name)
+        '''
 
         # Convert based on the detected format
         if font_type == "bfont":
