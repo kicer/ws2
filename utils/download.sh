@@ -1,13 +1,16 @@
-#!/bin/sh
+#!/bin/bash
+
+# switch to local path
+cd "$(dirname "$0")" || exit 1
 
 # 连接并打印文件列表
 mpremote ls
 
 # 生成romfs文件系统并上传
-mpremote romfs deploy src/rom
+mpremote romfs deploy ../src/rom
 
 # 复制文件
-for file in src/*.py; do
+for file in ../src/*.py; do
     if [ -f "$file" ]; then
         mpremote fs cp "$file" :
     fi
