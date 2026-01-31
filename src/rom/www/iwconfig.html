@@ -213,9 +213,9 @@
             /><br />
             <input
                 type="password"
+                id="pwd"
                 placeholder="WiFi密码"
                 name="password"
-                required
             /><br />
             <input
                 type="text"
@@ -298,6 +298,7 @@
                     item.appendChild(signalContainer);
                     item.onclick = function () {
                         document.getElementById("ssid").value = network.ssid;
+                        document.getElementById('pwd').focus();
                     };
                     listContainer.appendChild(item);
                 }

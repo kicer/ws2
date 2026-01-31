@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*- coding: utf-8 -*-
 
-CN_TEXT='北京月日星期一二三四五六末优良中差污恶能见度配置设备网络连接热点自动进入页面0123456789 abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ!%*+,-./()[]\"<>=?℃'
+CN_TEXT='天气北京市区邹城怀柔呼和浩特月日星期一二三四五六七八九十腊冬晴多云转雷雨雪雾霾风南东西级末优良中差污恶能见度配置设备网络连接热点自动进入页面0123456789 abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ!%*+,-./()[]\"<>=?℃'
 TIME_TEXT='0123456789: .-'
 
 SRC_DIR=./assets

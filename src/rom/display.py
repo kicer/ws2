@@ -41,7 +41,7 @@ class Display:
             self.ui_data = {}
             self.ticks = 0 # 据此切换多行显示
 
-    def init_display(self, bl_pwm=True, buffer_size=2048):
+    def init_display(self, bl_pwm=False, buffer_size=2048):
         """初始化液晶屏，默认2048够用且不易有内存碎片"""
         try:
             from machine import PWM, SPI, Pin
@@ -67,7 +67,8 @@ class Display:
             # 初始化并清屏
             self.tft.init()
             self.tft.fill(0)
-            display.show_jpg(self.bootimg, 80, 80)
+            self.show_jpg(self.bootimg, 80, 80)
+            self.message("WS2 v1.2.0 (20260131)")
 
             _print_mem()
             return True
@@ -145,7 +146,7 @@ class Display:
         self.window("配置设备网络连接", tips, "portal ip: 192.168.4.1")
 
     # 更新ui数据
-    def update_ui(self, city=None, weather=None, advice=None, aqi=None, lunar=None, envdat=None):
+    def update_ui(self, city=None, weather=None, advice=None, aqi=None, lunar=None, ip=None, envdat=None):
         self.ticks += 1
         if self.ui_type == 'default':
             # 中文的城市名称
@@ -156,10 +157,11 @@ class Display:
                     self.tft.write(self.cn_font, '??', 15,10)
             # 天气符号: 0-7 (未知、晴、云、雨、雷、雪、雾、风)
             if weather is not None and weather != self.ui_data.get('weather'):
-                self.show_jpg(f"/rom/images/{weather}.jpg",165,10)
+                self.show_jpg(f"/rom/images/{weather}.jpg",175,10)
                 self.ui_data['weather'] = weather
             # 建议信息可能有很多条，需要轮换展示
             if advice is not None and advice != self.ui_data.get('advice'):
+                if ip is not None: advice.append(ip)
                 self.ui_data['advice'] = advice
             # AQI等级分成0-5级，分别对应优、良、中、差、污、恶
             if aqi is not None and aqi != self.ui_data.get('aqi'):
@@ -180,15 +182,15 @@ class Display:
                 if t is not None and t != self.ui_data.get('t'):
                     self.ui_data['t'] = t
                     self.tft.fill_rect(35,179,40,16,0)
-                    self.tft.draw(self.vector_font, str(t), 35,187,0xFFFF,0.5)
+                    self.tft.draw(self.vector_font, f"{str(t)}'C", 35,187,0xFFFF,0.5)
                 if rh is not None and rh != self.ui_data.get('rh'):
                     self.ui_data['rh'] = rh
                     self.tft.fill_rect(110,179,40,16,0)
-                    self.tft.draw(self.vector_font, str(rh), 110,187,0xFFFF,0.5)
+                    self.tft.draw(self.vector_font, f' {str(rh)}%', 110,187,0xFFFF,0.5)
                 if pm is not None and pm != self.ui_data.get('pm'):
                     self.ui_data['pm'] = pm
                     self.tft.fill_rect(35,213,40,16,0)
-                    self.tft.draw(self.vector_font, str(pm), 35,221,0xFFFF,0.5)
+                    self.tft.draw(self.vector_font, f'{str(pm):>4s}', 35,221,0xFFFF,0.5)
                 if co2 is not None and co2 != self.ui_data.get('co2'):
                     # 如果co2数据存在，优先显示co2
                     if self.ui_data.get('ap'):
@@ -196,12 +198,12 @@ class Display:
                         self.show_jpg("/rom/images/co2.jpg",85,209)
                     self.ui_data['co2'] = co2
                     self.tft.fill_rect(110,213,40,16,0)
-                    self.tft.draw(self.vector_font, str(co2), 110,221,0xFFFF,0.5)
+                    self.tft.draw(self.vector_font, f'{str(co2):>4s}', 110,221,0xFFFF,0.5)
                 elif self.ui_data.get('co2') is None and ap is not None and ap != self.ui_data.get('ap'):
                     # 没co2时候才会显示大气压
                     self.ui_data['ap'] = ap
                     self.tft.fill_rect(110,213,40,16,0)
-                    self.tft.draw(self.vector_font, str(ap), 110,221,0xFFFF,0.5)
+                    self.tft.draw(self.vector_font, f'{str(ap):>4s}', 110,221,0xFFFF,0.5)
             # 处理日期
             from machine import RTC
             y,m,d,_w,H,M,*_ = RTC().datetime()
@@ -235,8 +237,8 @@ class Display:
                 i = self.ticks % len(advice)
                 c = advice[i]
                 w = self.tft.write(self.cn_font, advice[i], 15,45)
-                if w<22*6: # fill
-                    self.tft.fill_rect(15+w,45,22*6-w,22,0)
+                if w<22*7: # fill
+                    self.tft.fill_rect(15+w,45,22*7-w,22,0)
         # 打印内存信息
         _print_mem()
 

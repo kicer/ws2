@@ -89,8 +89,6 @@ class Config:
         # 确保SSID和密码都是字符串类型且不为空
         if not ssid:
             return False
-        if not password:
-            return False
 
         return True
 

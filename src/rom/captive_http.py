@@ -117,7 +117,7 @@ class HTTPServer(BaseServer):
     def login(self, params):
         # 从URL参数中提取表单数据
         ssid = unquote(params.get(b"ssid", None))
-        password = unquote(params.get(b"password", None))
+        password = unquote(params.get(b"password", ""))
         city = unquote(params.get(b"city", None))
 
         # 使用全局Config实例保存配置

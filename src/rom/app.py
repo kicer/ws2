@@ -69,19 +69,17 @@ async def get_weather_data(city=None, force=False):
         import aiohttp
 
         # 从配置文件获取城市，如果没有提供则使用配置中的值
-        if city is None:
-            city = config.get("city", "北京")
+        if not city:
+            city = config.get("city") or "北京"
 
         print(f"正在获取{city}天气数据...")
         # 从配置获取API基础URL，默认使用官方API
-        url = config.get("weather_api_url", "http://esp.tangofu.com/api/sd2/")
-        params={'uuid':uuid(), 'city':city}
+        url = config.get("weather_api_url", "http://esp.tangofu.com/api/ws2/")
+        params = {'uuid':uuid(), 'city':city}
 
         # 发送GET请求
-        print('start http')
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params) as response:
-                print('ACK=%s'%response.status)
                 # 检查响应状态
                 if response.status == 200:
                     # 解析JSON数据
@@ -99,7 +97,9 @@ async def get_weather_data(city=None, force=False):
                     advice = wdata.get("advice", [])
                     lunar = wdata.get("lunar", None)
 
-                    display.update_ui(city, weather, advice, aqi, lunar,
+                    ip = wifi_manager.get_ip()
+
+                    display.update_ui(city, weather, advice, aqi, lunar, ip,
                         envdat={'t':t,'rh':rh,'co2':co2,'pm':pm,'ap':ap})
 
                     # 更新缓存
@@ -140,8 +140,7 @@ async def sysinfo_update_task():
                 task_id = "weather"
                 await get_weather_data(force=True)
                 last_weather = current_ticks
-                #todo:weather_ts = int(config.get("weather_ts", 600))  # 10min
-                weather_ts = int(config.get("weather_ts", 6))  # 10min
+                weather_ts = int(config.get("weather_ts", 600))  # 10min
             elif ntp_diff >= ntptime_ts * 1000:
                 # 更新NTP时间
                 gc.collect()
@@ -218,8 +217,7 @@ def cb_progress(data):
 
 def start():
     # 初始化液晶屏
-    #display.init_display(config.get("bl_mode") != "gpio")
-    display.init_display(False, buffer_size=5000)
+    display.init_display(config.get("bl_mode")=="pwm", 5120)
     display.brightness(int(config.get("brightness", 10)))
     cb_progress("WiFi connect ...")
 

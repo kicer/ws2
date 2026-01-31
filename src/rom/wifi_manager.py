@@ -56,10 +56,10 @@ class WiFiManager:
             return False
 
         ssid = self.config.get("ssid")
-        password = self.config.get("password")
+        password = self.config.get("password") or ""
 
-        if not ssid or not password:
-            print("SSID or password is empty")
+        if not ssid:
+            print("SSID is empty")
             return False
 
         print(f"Trying to connect to SSID: {ssid}")
