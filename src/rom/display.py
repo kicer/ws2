@@ -68,7 +68,7 @@ class Display:
             self.tft.init()
             self.tft.fill(0)
             self.show_jpg(self.bootimg, 80, 80)
-            self.message("WS2 v1.2.0 (20260131)")
+            self.message("WS2 v1.2.1 (20260131)")
 
             _print_mem()
             return True
@@ -167,7 +167,7 @@ class Display:
             if aqi is not None and aqi != self.ui_data.get('aqi'):
                 _t = (('优',0x07E0),('良',0xFFE0),('中',0xFD20),('差',0xF800),('污',0x8010),('恶',0x7800))
                 _l,_c = _t[aqi]
-                self.tft.fill_rect(105, 8, 40, 25, _c)
+                self.tft.fill_rect(105, 8, 38, 25, _c)
                 self.tft.write(self.cn_font, _l, 114,10, 0,_c)
                 self.ui_data['aqi'] = aqi
             # 农历日期，需要和当前日期轮换展示
