@@ -136,6 +136,9 @@ async def lcd_set(request):
         for k, v in json.loads(post_data).items():
             if k == "brightness":
                 display.brightness(int(v))
+            elif k == "ui_type":
+                display.ui_type = v
+                config.set(k, v)
     except Exception as e:
         ack["status"] = "error"
         ack["message"] = str(e)
@@ -370,7 +373,7 @@ def start():
         machine.reset()
 
     gc.collect()
-    display.load_ui()
+    display.load_ui(config.get('ui_type'))
 
     # init web server
     from rom.nanoweb import Nanoweb

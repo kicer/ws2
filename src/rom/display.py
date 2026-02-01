@@ -243,8 +243,8 @@ class Display:
         _print_mem()
 
     # 初始化ui固定元素
-    def load_ui(self):
-        if self.ui_type == 'default':
+    def load_ui(self, ui_type='default'):
+        if ui_type == 'default':
             # 默认黑色背景 
             self.tft.fill(0)
             # 固定的环境数据图标
@@ -255,6 +255,7 @@ class Display:
 
         # 更新其他默认数据
         self.update_ui()
+        self.ui_type = ui_type
 
 # 全局液晶屏实例
 display = Display()
