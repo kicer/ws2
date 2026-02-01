@@ -81,7 +81,6 @@ def authenticate(credentials):
 
     return decorator
 
-
 # /status: 获取系统状态
 @authenticate(credentials=CREDENTIALS)
 async def sys_status(request):
@@ -92,8 +91,9 @@ async def sys_status(request):
                 "time": "{}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
                     *time.localtime()
                 ),
-                "uptime": str(f"{time.ticks_ms() // 1000} sec"),
-                "memory": str(f"{gc.mem_free() // 1000} KB"),
+                "uptime": time.ticks_ms(),
+                "mem_free": gc.mem_free(),
+                "mem_alloc": gc.mem_alloc(),
                 "uuid": uuid(),
                 "platform": str(sys.platform),
                 "version": str(sys.version),

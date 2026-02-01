@@ -48,10 +48,20 @@
         <div class="card">
             <div class="header">
                 <h1>WS2桌面气象站</h1>
-                <button class="btn" id="logout-btn">退出</button>
             </div>
 
-            <div class="alert hidden" id="message"></div>
+            <div
+                class="alert"
+                style="
+                    position: fixed;
+                    top: 25px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 1000;
+                    display: none;
+                "
+                id="message"
+            ></div>
 
             <!-- 导航选项卡 -->
             <div class="nav-tabs">
@@ -78,7 +88,7 @@
                     </div>
                     <div>
                         <strong>可用内存:</strong>
-                        <span data-bind="memory">-</span>
+                        <span data-bind="mem_free">-</span>
                     </div>
                     <div>
                         <strong>UUID:</strong> <span data-bind="uuid">-</span>
@@ -92,52 +102,40 @@
                         <span data-bind="version">-</span>
                     </div>
                 </div>
-
-                <button class="btn" id="refresh-status-btn">刷新状态</button>
             </div>
 
             <!-- 屏幕显示选项卡 -->
             <div id="display-tab" class="tab-content">
-                <h3>LCD状态</h3>
-                <div class="row">
-                    <div class="col">
-                        <div class="list">
-                            <div class="list-item">
-                                <strong>就绪状态:</strong>
-                                <span id="lcd-ready-display">-</span>
-                                <span
-                                    id="lcd-ready-badge-display"
-                                    class="badge badge-warning"
-                                ></span>
-                            </div>
-                            <div class="list-item">
-                                <strong>当前亮度:</strong>
-                                <span id="lcd-brightness-display">-</span>%
-                            </div>
-                            <div class="list-item">
-                                <strong>UI类型:</strong>
-                                <span id="lcd-ui-type-display">-</span>
-                            </div>
-                            <div class="list-item">
-                                <strong>数据内容:</strong>
-                                <span id="lcd-data-display">-</span>
-                            </div>
-                        </div>
+                <h3>LCD显示设置</h3>
+                <div class="form-group">
+                    <div
+                        style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        "
+                    >
+                        <label class="form-label mb-0">显示状态</label>
+                        <span
+                            id="lcd-ready-badge"
+                            class="badge badge-warning"
+                        ></span>
                     </div>
                 </div>
 
-                <h3 class="mt-3">显示设置</h3>
                 <div class="form-group">
-                    <label class="form-label">亮度 (0-100)</label>
-                    <input
-                        type="range"
-                        id="brightness-slider"
-                        min="0"
-                        max="100"
-                        class="form-control"
-                        style="padding:10px 0"
-                    />
-                    <div>当前值: <span id="brightness-value">-</span></div>
+                    <label class="form-label">屏幕亮度</label>
+                    <div style="display: flex; align-items: center">
+                        <input
+                            type="range"
+                            id="brightness-slider"
+                            min="0"
+                            max="100"
+                            class="form-control"
+                            style="margin-right: 10px; padding: 10px 0"
+                        />
+                        <span id="brightness-value">-</span>%
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -151,6 +149,14 @@
                 <button class="btn btn-success" id="apply-display-btn">
                     应用设置
                 </button>
+
+                <h3 class="mt-3">LCD数据内容</h3>
+                <table class="table" id="lcd-data-table">
+                    <tr>
+                        <th>属性</th>
+                        <th>值</th>
+                    </tr>
+                </table>
             </div>
 
             <!-- 系统配置选项卡 -->
@@ -216,7 +222,8 @@
                                 <span class="badge badge-info">彩色</span>
                             </div>
                             <div class="list-item">
-                                <strong>环境参数:</strong> 温度、湿度、PM2.5、气压、AQI
+                                <strong>环境参数:</strong>
+                                温度、湿度、PM2.5、气压、AQI
                             </div>
                         </div>
                     </div>
@@ -225,7 +232,12 @@
                         <div class="list">
                             <div class="list-item">
                                 <strong>固件:</strong>
-                                <a href="https://iot.foresh.com/git/kicer/ws2" target="_blank"> ws2-v1.3.0 </a>
+                                <a
+                                    href="https://iot.foresh.com/git/kicer/ws2"
+                                    target="_blank"
+                                >
+                                    ws2-v1.3.0
+                                </a>
                                 <span class="badge badge-success">开源</span>
                             </div>
                             <div class="list-item">
@@ -239,8 +251,20 @@
                 </div>
 
                 <h3 class="mt-3">开放源码</h3>
-                <a href="https://github.com/kicer/ws2" target="_blank" class="btn btn-outline"> Kicer@Github: ws2 </a>
-                <a href="https://iot.foresh.com/git/kicer/ws2" target="_blank" class="btn btn-outline"> Kicer@foresh: ws2（国内访问）</a>
+                <a
+                    href="https://github.com/kicer/ws2"
+                    target="_blank"
+                    class="btn btn-outline"
+                >
+                    kicer@Github: ws2
+                </a>
+                <a
+                    href="https://iot.foresh.com/git/kicer/ws2"
+                    target="_blank"
+                    class="btn btn-outline"
+                >
+                    kicer@Foresh: ws2（国内访问）</a
+                >
 
                 <h3 class="mt-3">软件许可</h3>
                 <p>本项目采用MIT许可证开源，欢迎自由使用和修改。</p>
@@ -257,13 +281,11 @@
                 initTabSwitching();
                 initEventHandlers();
                 refreshStatus();
-                loadConfig();
-                updateDisplaySettings();
             });
 
             // 初始化选项卡切换
             function initTabSwitching() {
-                mw.$$(".nav-tab").forEach(tab => {
+                mw.$$(".nav-tab").forEach((tab) => {
                     mw.on(tab, "click", function () {
                         const tabName = mw.attr(this, "data-tab");
                         showTab(tabName);
@@ -273,18 +295,10 @@
 
             // 初始化事件处理器
             function initEventHandlers() {
-                // 退出按钮
-                mw.on(mw.$("#logout-btn"), "click", function () {
-                    alert("退出功能暂未实现");
-                });
-
                 // 亮度滑块
                 mw.on(mw.$("#brightness-slider"), "input", function () {
                     mw.text(mw.$("#brightness-value"), mw.val(this));
                 });
-
-                // 刷新状态按钮
-                mw.on(mw.$("#refresh-status-btn"), "click", refreshStatus);
 
                 // 应用显示设置按钮
                 mw.on(
@@ -299,19 +313,14 @@
 
             // 更新LCD状态徽章
             function updateLcdBadges(isReady) {
-                const badge1 = mw.$("#lcd-ready-badge");
-                const badge2 = mw.$("#lcd-ready-badge-display");
+                const badge = mw.$("#lcd-ready-badge");
 
                 if (isReady) {
-                    mw.text(badge1, "正常");
-                    mw.text(badge2, "正常");
-                    mw.replaceClass(badge1, "badge-warning", "badge-success");
-                    mw.replaceClass(badge2, "badge-warning", "badge-success");
+                    mw.text(badge, "正常");
+                    mw.replaceClass(badge, "badge-warning", "badge-success");
                 } else {
-                    mw.text(badge1, "未就绪");
-                    mw.text(badge2, "未就绪");
-                    mw.replaceClass(badge1, "badge-success", "badge-warning");
-                    mw.replaceClass(badge2, "badge-success", "badge-warning");
+                    mw.text(badge, "未就绪");
+                    mw.replaceClass(badge, "badge-success", "badge-warning");
                 }
             }
 
@@ -347,14 +356,14 @@
             async function refreshStatus() {
                 try {
                     // 获取系统状态
-                    const statusResponse = await mw.ajax.get("/status");
-                    const statusData = JSON.parse(statusResponse);
+                    const response = await mw.ajax.get("/status");
+                    const data = JSON.parse(response);
 
                     // 使用数据绑定更新系统状态
-                    mw.bind(statusData);
+                    mw.bind(data);
 
                     // 更新内存仪表盘
-                    updateMemoryGauge(statusData.memory);
+                    updateMemoryGauge(data.mem_free, data.mem_alloc);
 
                     showMessage("状态已更新", "success");
                 } catch (error) {
@@ -363,34 +372,24 @@
             }
 
             // 更新内存仪表盘
-            function updateMemoryGauge(memoryStr) {
-                // 从内存字符串中提取数值，例如 "100 KB" -> 100
-                const match = memoryStr.match(/(\d+)/);
-                if (match) {
-                    // 这里简化处理，假设最大可用内存为50KB
-                    const maxMemory = 50;
-                    const memoryValue = parseInt(match[1]);
-                    const percentage = Math.min(
-                        100,
-                        Math.round((memoryValue / maxMemory) * 100),
-                    );
+            function updateMemoryGauge(free, alloc) {
+                const maxMemory = parseInt(free) + parseInt(alloc);
+                const memoryValue = parseInt(alloc);
+                const percentage = Math.min(
+                    100,
+                    Math.round((memoryValue / maxMemory) * 100),
+                );
 
-                    // 使用micro.js的图表功能创建仪表盘
-                    mw.chart.createGauge(
-                        mw.$("#memory-gauge"),
-                        percentage,
-                        100,
-                        {
-                            label: "内存使用率",
-                            color:
-                                percentage > 80
-                                    ? "#e74c3c"
-                                    : percentage > 50
-                                      ? "#f39c12"
-                                      : "#27ae60",
-                        },
-                    );
-                }
+                // 使用micro.js的图表功能创建仪表盘
+                mw.chart.createGauge(mw.$("#memory-gauge"), percentage, 100, {
+                    label: "内存使用率",
+                    color:
+                        percentage > 80
+                            ? "#e74c3c"
+                            : percentage > 50
+                              ? "#f39c12"
+                              : "#27ae60",
+                });
             }
 
             // 更新显示设置
@@ -399,21 +398,18 @@
                     const response = await mw.ajax.get("/lcd");
                     const data = JSON.parse(response);
 
-                    // 更新LCD状态
-                    const lcdBindings = {
-                        "lcd-ready": data.ready ? "就绪" : "未就绪",
-                        "lcd-brightness": data.brightness,
-                        "lcd-ui-type": data.ui_type,
-                        "lcd-data": JSON.stringify(data.data),
-                    };
-                    mw.bind(lcdBindings);
-
-                    // 更新亮度滑块
+                    // 更新亮度滑块和显示值
                     mw.val(mw.$("#brightness-slider"), data.brightness);
                     mw.text(mw.$("#brightness-value"), data.brightness);
 
                     // 更新UI类型选择框
                     mw.val(mw.$("#ui-type-select"), data.ui_type);
+
+                    // 更新LCD状态徽章
+                    updateLcdBadges(data.ready);
+
+                    // 更新LCD数据表格
+                    updateLcdDataTable(data.data);
                 } catch (error) {
                     showMessage("获取LCD状态失败: " + error.message, "error");
                 }
@@ -434,7 +430,8 @@
 
                     if (data.status === "success") {
                         showMessage("显示设置已应用", "success");
-                        refreshStatus();
+                        // 刷新显示设置
+                        await updateDisplaySettings();
                     } else {
                         showMessage(
                             "设置失败: " + (data.message || "未知错误"),
@@ -490,6 +487,31 @@
 
                     mw.text(cell1, key);
                     mw.text(cell2, data[key]);
+                }
+            }
+
+            // 更新LCD数据表格
+            function updateLcdDataTable(data) {
+                const dataTable = mw.$("#lcd-data-table");
+
+                // 清除现有行（保留标题行）
+                while (dataTable.rows.length > 1) {
+                    dataTable.deleteRow(1);
+                }
+
+                // 添加数据行
+                for (const key in data) {
+                    const row = dataTable.insertRow();
+                    const cell1 = row.insertCell(0);
+                    const cell2 = row.insertCell(1);
+
+                    mw.text(cell1, key);
+                    let value = data[key];
+                    // 如果值是对象，则转换为JSON字符串
+                    if (typeof value === "object") {
+                        value = JSON.stringify(value);
+                    }
+                    mw.text(cell2, value);
                 }
             }
 
