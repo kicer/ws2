@@ -12,9 +12,6 @@ from config import config
 from display import display  # 导入液晶屏管理模块
 from wifi_manager import wifi_manager
 
-# 全局变量存储最新的天气数据
-latest_weather = None
-
 def uuid():
     return str(machine.unique_id().hex())
 
@@ -33,6 +30,16 @@ def parse_url_params(url):
 
     return params
 
+async def post_parse(request):
+    if request.method != "POST":
+        raise Exception("invalid request")
+    content_length = int(request.headers["Content-Length"])
+    return (await request.read(content_length)).decode()
+
+async def json_response(request, data):
+    await request.write("HTTP/1.1 200 OK\r\n")
+    await request.write("Content-Type: application/json; charset=utf-8\r\n\r\n")
+    await request.write(data)
 
 # ntp时钟同步
 def sync_ntp_time():
@@ -50,20 +57,11 @@ def sync_ntp_time():
 
 
 # 简化的天气数据获取函数
-async def get_weather_data(city=None, force=False):
+async def fetch_weather_data(city=None):
     """获取天气数据，返回JSON格式数据
-
     Args:
         city: 城市名称，如果为None则从配置文件获取
-        force: 是否强制刷新，True则忽略缓存重新获取
     """
-    global latest_weather
-
-    # 检查是否需要强制更新或者缓存为空
-    if not force and latest_weather is not None:
-        # 使用缓存数据
-        print("使用缓存的天气数据")
-        return latest_weather
 
     try:
         import aiohttp
@@ -101,19 +99,11 @@ async def get_weather_data(city=None, force=False):
 
                     display.update_ui(city, weather, advice, aqi, lunar, ip,
                         envdat={'t':t,'rh':rh,'co2':co2,'pm':pm,'ap':ap})
-
-                    # 更新缓存
-                    latest_weather = display.ui_data
-                    print("天气数据获取成功")
-
-                    return latest_weather
                 else:
                     print(f"获取天气数据失败，状态码: {response.status}")
-                    return None
 
     except Exception as e:
         print(f"获取天气数据出错: {e}")
-        return None
 
 
 # 定时调度任务（时间不敏感，但考虑错开以节约内存）
@@ -138,7 +128,7 @@ async def sysinfo_update_task():
                 # 更新天气数据
                 gc.collect()
                 task_id = "weather"
-                await get_weather_data(force=True)
+                await fetch_weather_data()
                 last_weather = current_ticks
                 weather_ts = int(config.get("weather_ts", 600))  # 10min
             elif ntp_diff >= ntptime_ts * 1000:
@@ -240,73 +230,47 @@ def start():
     # website top directory
     naw.STATIC_DIR = "/rom/www"
 
-    # /ping: pong
-    @naw.route("/ping")
-    async def ping(request):
-        await request.write("HTTP/1.1 200 OK\r\n")
-        await request.write("Content-Type: text\r\n\r\n")
-        await request.write("pong")
-
     # /status
     @naw.route("/status")
-    async def ping(request):
-        await request.write("HTTP/1.1 200 OK\r\n")
-        await request.write("Content-Type: application/json\r\n\r\n")
-        await request.write(
-            json.dumps(
-                {
+    async def sys_status(request):
+        await json_response(request,
+            json.dumps({
                     "time": "{}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
                         *time.localtime()
                     ),
                     "uptime": str(f"{time.ticks_ms() // 1000} sec"),
                     "memory": str(f"{gc.mem_free() // 1000} KB"),
-                    "uuid": uuid,
+                    "uuid": uuid(),
                     "platform": str(sys.platform),
                     "version": str(sys.version),
-                }
-            )
+            })
         )
-
-    # /weather: 返回天气数据
-    @naw.route("/weather*")
-    async def weather_status(request):
-        await request.write("HTTP/1.1 200 OK\r\n")
-        await request.write("Content-Type: application/json\r\n\r\n")
-
-        # 解析URL参数
-        params = parse_url_params(request.url)
-        # 获取天气数据
-        weather = get_weather_data(
-            city=params.get("city"), force=params.get("force", False)
-        )
-        if weather:
-            await request.write(json.dumps(weather))
-        else:
-            await request.write(json.dumps({"error": "Failed to get weather data"}))
 
     # /lcd: 获取LCD状态
     @naw.route("/lcd")
     async def lcd_status(request):
-        await request.write("HTTP/1.1 200 OK\r\n")
-        await request.write("Content-Type: application/json\r\n\r\n")
-
         # 返回LCD状态
-        lcd_status = {
-            "ready": display.is_ready(),
-            "brightness": display.brightness(),
-            "ui_type": display.ui_type,
-        }
-        await request.write(json.dumps(lcd_status))
+        await json_response(request,
+            json.dumps({
+                "ready": display.is_ready(),
+                "brightness": display.brightness(),
+                "ui_type": display.ui_type,
+                "data": display.ui_data,
+            })
+        )
+
+    # /config: 获取当前配置
+    @naw.route("/config")
+    async def config_get(request):
+        # 返回所有配置项
+        await json_response(request, json.dumps(config.config_data))
 
     # /lcd/set: 设置LCD状态
     @naw.route("/lcd/set")
     async def lcd_set(request):
         ack = {"status": "success"}
         try:
-            if request.method != "POST":
-                raise Exception("invalid request")
-            content_length = int(request.headers["Content-Length"])
-            post_data = (await request.read(content_length)).decode()
+            post_data = await post_parse(request)
 
             for k, v in json.loads(post_data).items():
                 if k == "brightness":
@@ -315,10 +279,24 @@ def start():
             ack["status"] = "error"
             ack["message"] = str(e)
         finally:
-            await request.write(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
-            )
-            await request.write(json.dumps(ack))
+            await json_response(request, json.dumps(ack))
+
+    # /config/set: 更新配置
+    # curl -H "Content-Type: application/json" -X POST -d '{"city":"xxx","who":"ami"}' 'http://<url>/config/set'
+    @naw.route("/config/set")
+    async def config_update(request):
+        ack = {"status": "success"}
+        try:
+            post_data = await post_parse(request)
+
+            for k, v in json.loads(post_data).items():
+                config.set(k, v)
+            config.write()
+        except Exception as e:
+            ack["status"] = "error"
+            ack["message"] = str(e)
+        finally:
+            await json_response(request, json.dumps(ack))
 
     # /exec: 执行命令并返回
     # {"cmd":"import network;R=network.WLAN().config(\"mac\").hex()", "token":"xxx"}
@@ -326,10 +304,7 @@ def start():
     async def eval_cmd(request):
         ack = {"status": "success"}
         try:
-            if request.method != "POST":
-                raise Exception("invalid request")
-            content_length = int(request.headers["Content-Length"])
-            post_data = (await request.read(content_length)).decode()
+            post_data = await post_parse(request)
 
             cmd = json.loads(post_data).get("cmd")
             token = json.loads(post_data).get("token")
@@ -341,41 +316,7 @@ def start():
             ack["status"] = "error"
             ack["message"] = str(e)
         finally:
-            await request.write(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
-            )
-            await request.write(json.dumps(ack))
-
-    # /config: 获取当前配置
-    @naw.route("/config")
-    async def config_get(request):
-        await request.write("HTTP/1.1 200 OK\r\n")
-        await request.write("Content-Type: application/json\r\n\r\n")
-        # 返回所有配置项
-        await request.write(json.dumps(config.config_data))
-
-    # /config/set: 更新配置
-    # curl -H "Content-Type: application/json" -X POST -d '{"city":"xxx","who":"ami"}' 'http://<url>/config/set'
-    @naw.route("/config/set")
-    async def config_update(request):
-        ack = {"status": "success"}
-        try:
-            if request.method != "POST":
-                raise Exception("invalid request")
-            content_length = int(request.headers["Content-Length"])
-            post_data = (await request.read(content_length)).decode()
-
-            for k, v in json.loads(post_data).items():
-                config.set(k, v)
-            config.write()
-        except Exception as e:
-            ack["status"] = "error"
-            ack["message"] = str(e)
-        finally:
-            await request.write(
-                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n"
-            )
-            await request.write(json.dumps(ack))
+            await json_response(request, json.dumps(ack))
 
     # create task
     loop = asyncio.get_event_loop()

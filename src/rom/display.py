@@ -68,7 +68,7 @@ class Display:
             self.tft.init()
             self.tft.fill(0)
             self.show_jpg(self.bootimg, 80, 80)
-            self.message("WS2 v1.2.1 (20260131)")
+            self.message("WS2 v1.2.2 (20260201)")
 
             _print_mem()
             return True
