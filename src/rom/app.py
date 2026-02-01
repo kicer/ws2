@@ -171,9 +171,10 @@ async def eval_cmd(request):
     ack = {"status": "success"}
     try:
         post_data = await post_parse(request)
+        _json = json.loads(post_data)
 
-        cmd = json.loads(post_data).get("cmd")
-        token = json.loads(post_data).get("token")
+        cmd = _json.get("cmd")
+        token = _json.get("token")
         if cmd and token == uuid():
             _NS = {}
             exec(cmd, _NS)
