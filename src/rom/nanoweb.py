@@ -36,7 +36,7 @@ async def error(request, code, reason):
     await request.write(str(reason))
 
 
-async def send_file(request, filename, segment=64, binary=True):
+async def send_file(request, filename, segment=512, binary=True):
     try:
         with open(filename, "rb" if binary else "r") as f:
             while True:
@@ -91,7 +91,8 @@ class Nanoweb:
                 handler = (request.url, handler)
 
             if isinstance(handler, str):
-                await write(request, "HTTP/1.1 200 OK\r\n\r\n")
+                await write(request, "HTTP/1.1 200 OK\r\n")
+                await write(request, "Cache-Control: max-age=3600\r\n\r\n")
                 await send_file(request, handler)
             elif isinstance(handler, tuple):
                 await write(request, "HTTP/1.1 200 OK\r\n\r\n")
