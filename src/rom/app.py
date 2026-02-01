@@ -1,19 +1,21 @@
 # ESP8266天气站主程序
 # 首先尝试连接已保存的WiFi，失败则启动CaptivePortal进行配置
 
+import asyncio
 import gc
 import json
 import sys
 import time
 
 import machine
-import asyncio
 from config import config
 from display import display  # 导入液晶屏管理模块
 from wifi_manager import wifi_manager
 
+
 def uuid():
     return str(machine.unique_id().hex())
+
 
 def parse_url_params(url):
     # 解析URL中的查询参数，返回参数字典
@@ -30,18 +32,23 @@ def parse_url_params(url):
 
     return params
 
+
 async def post_parse(request):
     if request.method != "POST":
         raise Exception("invalid request")
     content_length = int(request.headers["Content-Length"])
     return (await request.read(content_length)).decode()
 
+
 async def json_response(request, data):
     await request.write("HTTP/1.1 200 OK\r\n")
     await request.write("Content-Type: application/json; charset=utf-8\r\n\r\n")
     await request.write(data)
 
-CREDENTIALS = ('admin', config.get('web_password', 'admin'))
+
+CREDENTIALS = ("admin", config.get("web_password", "admin"))
+
+
 def authenticate(credentials):
     async def fail(request):
         await request.write("HTTP/1.1 401 Unauthorized\r\n")
@@ -51,31 +58,37 @@ def authenticate(credentials):
     def decorator(func):
         async def wrapper(request):
             from ubinascii import a2b_base64 as base64_decode
-            header = request.headers.get('Authorization', None)
+
+            header = request.headers.get("Authorization", None)
             if header is None:
                 return await fail(request)
 
             # Authorization: Basic XXX
-            kind, authorization = header.strip().split(' ', 1)
+            kind, authorization = header.strip().split(" ", 1)
             if kind != "Basic":
                 return await fail(request)
 
-            authorization = base64_decode(authorization.strip()) \
-                .decode('ascii') \
-                .split(':')
+            authorization = (
+                base64_decode(authorization.strip()).decode("ascii").split(":")
+            )
 
             if list(credentials) != list(authorization):
                 return await fail(request)
 
             return await func(request)
+
         return wrapper
+
     return decorator
+
 
 # /status: 获取系统状态
 @authenticate(credentials=CREDENTIALS)
 async def sys_status(request):
-    await json_response(request,
-        json.dumps({
+    await json_response(
+        request,
+        json.dumps(
+            {
                 "time": "{}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
                     *time.localtime()
                 ),
@@ -84,27 +97,34 @@ async def sys_status(request):
                 "uuid": uuid(),
                 "platform": str(sys.platform),
                 "version": str(sys.version),
-        })
+            }
+        ),
     )
+
 
 # /lcd: 获取LCD状态
 @authenticate(credentials=CREDENTIALS)
 async def lcd_status(request):
     # 返回LCD状态
-    await json_response(request,
-        json.dumps({
-            "ready": display.is_ready(),
-            "brightness": display.brightness(),
-            "ui_type": display.ui_type,
-            "data": display.ui_data,
-        })
+    await json_response(
+        request,
+        json.dumps(
+            {
+                "ready": display.is_ready(),
+                "brightness": display.brightness(),
+                "ui_type": display.ui_type,
+                "data": display.ui_data,
+            }
+        ),
     )
+
 
 # /config: 获取当前配置
 @authenticate(credentials=CREDENTIALS)
 async def config_get(request):
     # 返回所有配置项
     await json_response(request, json.dumps(config.config_data))
+
 
 # /lcd/set: 设置LCD状态
 @authenticate(credentials=CREDENTIALS)
@@ -122,6 +142,7 @@ async def lcd_set(request):
     finally:
         await json_response(request, json.dumps(ack))
 
+
 # /config/set: 更新配置
 # curl -H "Content-Type: application/json" -X POST -d '{"city":"xxx","who":"ami"}' 'http://<url>/config/set'
 @authenticate(credentials=CREDENTIALS)
@@ -138,6 +159,7 @@ async def config_update(request):
         ack["message"] = str(e)
     finally:
         await json_response(request, json.dumps(ack))
+
 
 # /exec: 执行命令并返回
 # {"cmd":"import network;R=network.WLAN().config(\"mac\").hex()", "token":"xxx"}
@@ -158,6 +180,8 @@ async def eval_cmd(request):
         ack["message"] = str(e)
     finally:
         await json_response(request, json.dumps(ack))
+
+
 
 # ntp时钟同步
 def sync_ntp_time():
@@ -187,7 +211,7 @@ async def fetch_weather_data(city=None):
         print(f"正在获取{city}天气数据...")
         # 从配置获取API基础URL，默认使用官方API
         url = config.get("weather_api_url", "http://esp.tangofu.com/api/ws2/")
-        params = {'uuid':uuid(), 'city':city}
+        params = {"uuid": uuid(), "city": city}
 
         # 发送GET请求
         async with aiohttp.ClientSession() as session:
@@ -211,8 +235,15 @@ async def fetch_weather_data(city=None):
 
                     ip = wifi_manager.get_ip()
 
-                    display.update_ui(city, weather, advice, aqi, lunar, ip,
-                        envdat={'t':t,'rh':rh,'co2':co2,'pm':pm,'ap':ap})
+                    display.update_ui(
+                        city,
+                        weather,
+                        advice,
+                        aqi,
+                        lunar,
+                        ip,
+                        envdat={"t": t, "rh": rh, "co2": co2, "pm": pm, "ap": ap},
+                    )
                 else:
                     print(f"获取天气数据失败，状态码: {response.status}")
 
@@ -282,7 +313,7 @@ async def ui_task():
                 t0 = time.ticks_ms()
 
                 # 计算当前帧号(1-10)，更新动画
-                cframe = (F % 10)
+                cframe = F % 10
                 pic = f"/rom/images/T{cframe}.jpg"
                 display.show_jpg(pic, 160, 160)
 
@@ -297,7 +328,7 @@ async def ui_task():
                 # 控制帧率
                 now = time.ticks_ms()
                 ts = time.ticks_diff(now, t0)
-                _sT = (100-ts) if ts<90 else 10
+                _sT = (100 - ts) if ts < 90 else 10
                 await asyncio.sleep_ms(_sT)
 
             except Exception as e:
@@ -308,28 +339,32 @@ async def ui_task():
     except Exception as e:
         print(f"动画任务初始化失败: {e}")
 
+
 def cb_progress(data):
     if isinstance(data, bytes):
-        if data == b'/':
-            display.portal_info('load iwconfig page    ')
-        elif data == b'/login':
-            display.portal_info('WiFi connecting ...   ')
+        if data == b"/":
+            display.portal_info("load iwconfig page    ")
+        elif data == b"/login":
+            display.portal_info("WiFi connecting ...   ")
     elif isinstance(data, str):
         display.message(data, 19, 204)
 
-    if data: print(f'progress: {str(data)}')
+    if data:
+        print(f"progress: {str(data)}")
+
 
 def start():
     # 初始化液晶屏
-    display.init_display(config.get("bl_mode")=="pwm", 7000)
+    display.init_display(config.get("bl_mode") == "pwm", 7000)
     display.brightness(int(config.get("brightness", 10)))
     cb_progress("WiFi connect ...")
 
     if not wifi_manager.connect(cb_progress):
         gc.collect()
         from captive_portal import CaptivePortal
+
         portal = CaptivePortal()
-        display.portal_win(portal.essid.decode('ascii'))
+        display.portal_win(portal.essid.decode("ascii"))
         portal.start(cb_progress)
         # just reboot
         machine.reset()
@@ -343,6 +378,7 @@ def start():
     naw = Nanoweb()
     # website top directory
     naw.STATIC_DIR = "/rom/www"
+    naw.INDEX_FILE = "/rom/www/index.html"
 
     # Declare route from a dict
     naw.routes = {
