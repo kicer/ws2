@@ -174,10 +174,12 @@ async def eval_cmd(request):
 
         cmd = json.loads(post_data).get("cmd")
         token = json.loads(post_data).get("token")
-        if cmd and token == uuid:
+        if cmd and token == uuid():
             _NS = {}
             exec(cmd, _NS)
             ack["result"] = str(_NS.get("R"))
+        else:
+            raise Exception("invalid token")
     except Exception as e:
         ack["status"] = "error"
         ack["message"] = str(e)
@@ -373,7 +375,7 @@ def start():
         machine.reset()
 
     gc.collect()
-    display.load_ui(config.get('ui_type'))
+    display.load_ui(config.get('ui_type', 'default'))
 
     # init web server
     from rom.nanoweb import Nanoweb

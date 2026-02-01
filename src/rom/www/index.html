@@ -1,307 +1,634 @@
-<!doctype html><html><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>WS2桌面气象站</title><link rel="stylesheet" href="./css/micro.min.css" /><style>
-.header {
-display: flex;
-justify-content: space-between;
-align-items: center;
-margin-bottom: 20px;
-}
-.nav-tabs {
-display: flex;
-border-bottom: 1px solid #ddd;
-margin-bottom: 20px;
-}
-.nav-tab {
-padding: 10px 15px;
-cursor: pointer;
-border-bottom: 2px solid transparent;
-}
-.nav-tab.active {
-border-bottom-color: #3498db;
-font-weight: bold;
-}
-.tab-content {
-display: none;
-}
-.tab-content.active {
-display: block;
-}
-.status-grid {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 15px;
-}
-.gauge-container {
-text-align: center;
-margin: 20px 0;
-}
-</style></head><body><div class="card"><div class="header"><h1>WS2桌面气象站</h1></div><div
-class="alert"
-style="
-position: fixed;
-top: 25px;
-left: 50%;
-transform: translateX(-50%);
-z-index: 1000;
-display: none;
-"
-id="message"
-></div><div class="nav-tabs"><div class="nav-tab active" data-tab="status">设备状态</div><div class="nav-tab" data-tab="display">屏幕显示</div><div class="nav-tab" data-tab="config">系统配置</div><div class="nav-tab" data-tab="about">关于</div></div><div id="status-tab" class="tab-content active"><div class="gauge-container"><div id="memory-gauge"></div></div><h3 class="mt-3">系统信息</h3><div class="status-grid"><div><strong>时间:</strong><span data-bind="time">-</span></div><div><strong>运行时间:</strong><span data-bind="uptime">-</span></div><div><strong>可用内存:</strong><span data-bind="mem_free">-</span></div><div><strong>UUID:</strong><span data-bind="uuid">-</span></div><div><strong>平台:</strong><span data-bind="platform">-</span></div><div><strong>版本:</strong><span data-bind="version">-</span></div></div></div><div id="display-tab" class="tab-content"><h3>LCD显示设置</h3><div class="form-group"><div
-style="
-display: flex;
-justify-content: space-between;
-align-items: center;
-"
-><label class="form-label mb-0">显示状态</label><span
-id="lcd-ready-badge"
-class="badge badge-warning"
-></span></div></div><div class="form-group"><label class="form-label">屏幕亮度</label><div style="display: flex; align-items: center"><input
-type="range"
-id="brightness-slider"
-min="0"
-max="100"
-class="form-control"
-style="margin-right: 10px; padding: 10px 0"
-/><span id="brightness-value">-</span>%
-</div></div><div class="form-group"><label class="form-label">UI类型</label><select id="ui-type-select" class="form-control"><option value="default">太空人天气时钟</option><option value="album">电子相册</option></select></div><button class="btn btn-success" id="apply-display-btn">
-应用设置
-</button><h3 class="mt-3">LCD数据内容</h3><table class="table" id="lcd-data-table"><tr><th>属性</th><th>值</th></tr></table></div><div id="config-tab" class="tab-content"><h3>天气站配置</h3><div class="form-group"><label class="form-label">城市</label><input
-type="text"
-id="city-input"
-class="form-control"
-placeholder="例如：北京"
-/><small class="text-muted">
-可输入城市名称或城市ID（<a
-href="https://mapopen-website-wiki.cdn.bcebos.com/cityList/weather_district_id.csv"
-target="_blank"
->查看城市ID列表</a
->）
-</small></div><div class="form-group"><label class="form-label">自动熄屏时间</label><input
-type="time"
-id="standby-time-input"
-class="form-control"
-/><small class="text-muted">留空表示不自动熄屏</small></div><button class="btn btn-success" id="save-config-btn">
-保存配置
-</button><h3 class="mt-3">当前配置</h3><table class="table" id="current-config"><tr><th>配置项</th><th>值</th></tr></table></div><div id="about-tab" class="tab-content"><h3>关于</h3><p>
-WS2是一款基于ESP8266的桌面气象站，能够实时显示天气信息、环境数据和时间。
-</p><div class="row"><div class="col"><h3 class="mt-3">硬件规格</h3><div class="list"><div class="list-item"><strong>硬件平台:</strong> ESP8266
-<span class="badge badge-info">WiFi</span></div><div class="list-item"><strong>显示屏:</strong> LCD 240x240
-<span class="badge badge-info">彩色</span></div><div class="list-item"><strong>环境参数:</strong>
-温度、湿度、PM2.5、气压、AQI
-</div></div></div><div class="col"><h3 class="mt-3">软件信息</h3><div class="list"><div class="list-item"><strong>固件:</strong><a
-href="https://iot.foresh.com/git/kicer/ws2"
-target="_blank"
->
-ws2-v1.3.0
-</a><span class="badge badge-success">开源</span></div><div class="list-item"><strong>协议:</strong> HTTP REST API
-</div><div class="list-item"><strong>更新频率:</strong> 每小时
-</div></div></div></div><h3 class="mt-3">开放源码</h3><a
-href="https://github.com/kicer/ws2"
-target="_blank"
-class="btn btn-outline"
->
-kicer@Github: ws2
-</a><a
-href="https://iot.foresh.com/git/kicer/ws2"
-target="_blank"
-class="btn btn-outline"
->
-kicer@Foresh: ws2（国内访问）</a
-><h3 class="mt-3">软件许可</h3><p>本项目采用MIT许可证开源，欢迎自由使用和修改。</p></div></div><script src="./js/micro.min.js"></script><script>
-// 全局变量
-let currentConfig = {};// 页面加载完成后执行
-document.addEventListener("DOMContentLoaded", function () {
-initTabSwitching();
-initEventHandlers();
-refreshStatus();
-});// 初始化选项卡切换
-function initTabSwitching() {
-mw.$$(".nav-tab").forEach((tab) => {
-mw.on(tab, "click", function () {
-const tabName = mw.attr(this, "data-tab");
-showTab(tabName);
-});
-});
-}// 初始化事件处理器
-function initEventHandlers() {
-// 亮度滑块
-mw.on(mw.$("#brightness-slider"), "input", function () {
-mw.text(mw.$("#brightness-value"), mw.val(this));
-});// 应用显示设置按钮
-mw.on(
-mw.$("#apply-display-btn"),
-"click",
-applyDisplaySettings,
-);// 保存配置按钮
-mw.on(mw.$("#save-config-btn"), "click", saveConfig);
-}// 更新LCD状态徽章
-function updateLcdBadges(isReady) {
-const badge = mw.$("#lcd-ready-badge");if (isReady) {
-mw.text(badge, "正常");
-mw.replaceClass(badge, "badge-warning", "badge-success");
-} else {
-mw.text(badge, "未就绪");
-mw.replaceClass(badge, "badge-success", "badge-warning");
-}
-}// 切换选项卡
-function showTab(tabName) {
-// 隐藏所有选项卡内容
-mw.$$(".tab-content").forEach((tab) =>
-mw.removeClass(tab, "active"),
-);// 移除所有选项卡的激活类
-mw.$$(".nav-tab").forEach((tab) =>
-mw.removeClass(tab, "active"),
-);// 显示选中的选项卡
-mw.addClass(mw.$(`#${tabName}-tab`), "active");// 激活选中的导航
-mw.addClass(mw.$(`[data-tab="${tabName}"]`), "active");// 根据选项卡刷新数据
-if (tabName === "status") {
-refreshStatus();
-} else if (tabName === "config") {
-loadConfig();
-} else if (tabName === "display") {
-updateDisplaySettings();
-}
-}// 刷新状态
-async function refreshStatus() {
-try {
-// 获取系统状态
-const response = await mw.ajax.get("/status");
-const data = JSON.parse(response);// 使用数据绑定更新系统状态
-mw.bind(data);// 更新内存仪表盘
-updateMemoryGauge(data.mem_free, data.mem_alloc);showMessage("状态已更新", "success");
-} catch (error) {
-showMessage("获取状态失败: " + error.message, "error");
-}
-}// 更新内存仪表盘
-function updateMemoryGauge(free, alloc) {
-const maxMemory = parseInt(free) + parseInt(alloc);
-const memoryValue = parseInt(alloc);
-const percentage = Math.min(
-100,
-Math.round((memoryValue / maxMemory) * 100),
-);// 使用micro.js的图表功能创建仪表盘
-mw.chart.createGauge(mw.$("#memory-gauge"), percentage, 100, {
-label: "内存使用率",
-color:
-percentage > 80
-? "#e74c3c"
-: percentage > 50
-? "#f39c12"
-: "#27ae60",
-});
-}// 更新显示设置
-async function updateDisplaySettings() {
-try {
-const response = await mw.ajax.get("/lcd");
-const data = JSON.parse(response);// 更新亮度滑块和显示值
-mw.val(mw.$("#brightness-slider"), data.brightness);
-mw.text(mw.$("#brightness-value"), data.brightness);// 更新UI类型选择框
-mw.val(mw.$("#ui-type-select"), data.ui_type);// 更新LCD状态徽章
-updateLcdBadges(data.ready);// 更新LCD数据表格
-updateLcdDataTable(data.data);
-} catch (error) {
-showMessage("获取LCD状态失败: " + error.message, "error");
-}
-}// 应用显示设置
-async function applyDisplaySettings() {
-try {
-const brightness = mw.val(mw.$("#brightness-slider"));
-const uiType = mw.val(mw.$("#ui-type-select"));const response = await mw.ajax.post("/lcd/set", {
-brightness: brightness,
-ui_type: uiType,
-});const data = JSON.parse(response);if (data.status === "success") {
-showMessage("显示设置已应用", "success");
-// 刷新显示设置
-await updateDisplaySettings();
-} else {
-showMessage(
-"设置失败: " + (data.message || "未知错误"),
-"error",
-);
-}
-} catch (error) {
-showMessage("请求失败: " + error.message, "error");
-}
-}// 加载配置
-async function loadConfig() {
-try {
-const response = await mw.ajax.get("/config");
-const data = JSON.parse(response);currentConfig = data;// 更新配置表单
-if (data.city) {
-mw.val(mw.$("#city-input"), data.city);
-}if (data.standby_time) {
-mw.val(
-mw.$("#standby-time-input"),
-data.standby_time,
-);
-}// 更新配置表
-updateConfigTable(data);
-} catch (error) {
-showMessage("获取配置失败: " + error.message, "error");
-}
-}// 更新配置表格
-function updateConfigTable(data) {
-const configTable = mw.$("#current-config");// 清除现有行（保留标题行）
-while (configTable.rows.length > 1) {
-configTable.deleteRow(1);
-}// 添加新行
-for (const key in data) {
-const row = configTable.insertRow();
-const cell1 = row.insertCell(0);
-const cell2 = row.insertCell(1);mw.text(cell1, key);
-mw.text(cell2, data[key]);
-}
-}// 更新LCD数据表格
-function updateLcdDataTable(data) {
-const dataTable = mw.$("#lcd-data-table");// 清除现有行（保留标题行）
-while (dataTable.rows.length > 1) {
-dataTable.deleteRow(1);
-}// 添加数据行
-for (const key in data) {
-const row = dataTable.insertRow();
-const cell1 = row.insertCell(0);
-const cell2 = row.insertCell(1);mw.text(cell1, key);
-let value = data[key];
-// 如果值是对象，则转换为JSON字符串
-if (typeof value === "object") {
-value = JSON.stringify(value);
-}
-mw.text(cell2, value);
-}
-}// 保存配置
-async function saveConfig() {
-try {
-const city = mw.val(mw.$("#city-input"));
-const standbyTime = mw.val(mw.$("#standby-time-input"));if (!city) {
-showMessage("城市名称不能为空", "error");
-return;
-}const configData = {
-city: city,
-};// 只有当输入了熄屏时间时才添加到配置中
-if (standbyTime !== "") {
-configData.standby_time = standbyTime;
-}const response = await mw.ajax.post(
-"/config/set",
-configData,
-);
-const data = JSON.parse(response);if (data.status === "success") {
-showMessage("配置已保存", "success");
-loadConfig();
-} else {
-showMessage(
-"保存失败: " + (data.message || "未知错误"),
-"error",
-);
-}
-} catch (error) {
-showMessage("请求失败: " + error.message, "error");
-}
-}// 显示消息
-function showMessage(text, type) {
-const messageEl = mw.$("#message");
-mw.text(messageEl, text);
-mw.addClass(messageEl, "alert-" + type);
-mw.show(messageEl);setTimeout(() => {
-mw.hide(messageEl);
-}, 3000);
-}
-</script></body></html>
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WS2桌面气象站</title>
+        <link rel="stylesheet" href="./css/micro.min.css" />
+        <style>
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+            }
+            .nav-tabs {
+                display: flex;
+                border-bottom: 1px solid #ddd;
+                margin-bottom: 20px;
+            }
+            .nav-tab {
+                padding: 10px 15px;
+                cursor: pointer;
+                border-bottom: 2px solid transparent;
+            }
+            .nav-tab.active {
+                border-bottom-color: #3498db;
+                font-weight: bold;
+            }
+            .tab-content {
+                display: none;
+            }
+            .tab-content.active {
+                display: block;
+            }
+            .status-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+            }
+            .gauge-container {
+                text-align: center;
+                margin: 20px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <div class="header"><h1>WS2桌面气象站</h1></div>
+            <div
+                class="alert"
+                style="
+                    position: fixed;
+                    top: 25px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 1000;
+                    display: none;
+                "
+                id="message"
+            ></div>
+            <div class="nav-tabs">
+                <div class="nav-tab active" data-tab="status">设备状态</div>
+                <div class="nav-tab" data-tab="display">屏幕显示</div>
+                <div class="nav-tab" data-tab="config">系统配置</div>
+                <div class="nav-tab" data-tab="advanced">高级设置</div>
+                <div class="nav-tab" data-tab="about">关于</div>
+            </div>
+            <div id="status-tab" class="tab-content active">
+                <div class="gauge-container"><div id="memory-gauge"></div></div>
+                <h3 class="mt-3">系统信息</h3>
+                <div class="status-grid">
+                    <div>
+                        <strong>时间:</strong><span data-bind="time">-</span>
+                    </div>
+                    <div>
+                        <strong>运行时间:</strong
+                        ><span data-bind="uptime">-</span>
+                    </div>
+                    <div>
+                        <strong>可用内存:</strong
+                        ><span data-bind="mem_free">-</span>
+                    </div>
+                    <div>
+                        <strong>UUID:</strong><span data-bind="uuid">-</span>
+                    </div>
+                    <div>
+                        <strong>平台:</strong
+                        ><span data-bind="platform">-</span>
+                    </div>
+                    <div>
+                        <strong>版本:</strong><span data-bind="version">-</span>
+                    </div>
+                </div>
+            </div>
+            <div id="display-tab" class="tab-content">
+                <h3>LCD显示设置</h3>
+                <div class="form-group">
+                    <div
+                        style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        "
+                    >
+                        <label class="form-label mb-0">显示状态</label
+                        ><span
+                            id="lcd-ready-badge"
+                            class="badge badge-warning"
+                        ></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">屏幕亮度</label>
+                    <div style="display: flex; align-items: center">
+                        <input
+                            type="range"
+                            id="brightness-slider"
+                            min="0"
+                            max="100"
+                            class="form-control"
+                            style="margin-right: 10px; padding: 10px 0"
+                        /><span id="brightness-value">-</span>%
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">UI类型</label
+                    ><select id="ui-type-select" class="form-control">
+                        <option value="default">太空人天气时钟</option>
+                        <option value="album">电子相册</option>
+                    </select>
+                </div>
+                <button class="btn btn-success" id="apply-display-btn">
+                    应用设置
+                </button>
+                <h3 class="mt-3">LCD数据内容</h3>
+                <table class="table" id="lcd-data-table">
+                    <tr>
+                        <th>属性</th>
+                        <th>值</th>
+                    </tr>
+                </table>
+            </div>
+            <div id="config-tab" class="tab-content">
+                <h3>天气站配置</h3>
+                <div class="form-group">
+                    <label class="form-label">城市</label
+                    ><input
+                        type="text"
+                        id="city-input"
+                        class="form-control"
+                        placeholder="例如：北京"
+                    /><small class="text-muted">
+                        可输入城市名称或城市ID（<a
+                            href="https://mapopen-website-wiki.cdn.bcebos.com/cityList/weather_district_id.csv"
+                            target="_blank"
+                            >查看城市ID列表</a
+                        >）
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">自动熄屏时间</label
+                    ><input
+                        type="time"
+                        id="standby-time-input"
+                        class="form-control"
+                    /><small class="text-muted">留空表示不自动熄屏</small>
+                </div>
+                <button class="btn btn-success" id="save-config-btn">
+                    保存配置
+                </button>
+                <h3 class="mt-3">当前配置</h3>
+                <table class="table" id="current-config">
+                    <tr>
+                        <th>配置项</th>
+                        <th>值</th>
+                    </tr>
+                </table>
+            </div>
+            <div id="advanced-tab" class="tab-content">
+                <h3>快捷操作</h3>
+                <div class="form-group">
+                    <button class="btn btn-outline" data-cmd="get_mac">
+                        MAC地址
+                    </button>
+                    <button class="btn btn-outline" data-cmd="reboot">
+                        重启设备
+                    </button>
+                    <button class="btn btn-outline" data-cmd="reset_config">
+                        清空配置
+                    </button>
+                </div>
+
+                <h3 class="mt-3">命令执行</h3>
+                <div class="form-group">
+                    <label class="form-label">命令</label>
+                    <textarea
+                        id="command-input"
+                        class="form-control"
+                        rows="4"
+                        placeholder="输入要执行的命令..."
+                    ></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Token</label>
+                    <input
+                        type="text"
+                        id="token-input"
+                        class="form-control"
+                        placeholder="输入认证token（可选）"
+                    />
+                </div>
+
+                <div class="form-group">
+                    <button id="send-cmd-btn" class="btn btn-success">
+                        发送命令
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">应答</label>
+                    <textarea
+                        id="response-output"
+                        class="form-control"
+                        rows="8"
+                        readonly
+                        placeholder="命令应答将显示在这里..."
+                    ></textarea>
+                </div>
+            </div>
+            <div id="about-tab" class="tab-content">
+                <h3>关于</h3>
+                <p>
+                    WS2是一款基于ESP8266的桌面气象站，能够实时显示天气信息、环境数据和时间。
+                </p>
+                <div class="row">
+                    <div class="col">
+                        <h3 class="mt-3">硬件规格</h3>
+                        <div class="list">
+                            <div class="list-item">
+                                <strong>硬件平台:</strong> ESP8266
+                                <span class="badge badge-info">WiFi</span>
+                            </div>
+                            <div class="list-item">
+                                <strong>显示屏:</strong> LCD 240x240
+                                <span class="badge badge-info">彩色</span>
+                            </div>
+                            <div class="list-item">
+                                <strong>环境参数:</strong>
+                                温度、湿度、PM2.5、气压、AQI
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <h3 class="mt-3">软件信息</h3>
+                        <div class="list">
+                            <div class="list-item">
+                                <strong>固件:</strong
+                                ><a
+                                    href="https://iot.foresh.com/git/kicer/ws2"
+                                    target="_blank"
+                                >
+                                    ws2-firmware-v1.3.5-4M.bin </a
+                                ><span class="badge badge-success">开源</span>
+                            </div>
+                            <div class="list-item">
+                                <strong>协议:</strong> HTTP REST API
+                            </div>
+                            <div class="list-item">
+                                <strong>更新频率:</strong> 每小时
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <h3 class="mt-3">开放源码</h3>
+                <a
+                    href="https://github.com/kicer/ws2"
+                    target="_blank"
+                    class="btn btn-outline"
+                >
+                    kicer@Github: ws2 </a
+                ><a
+                    href="https://iot.foresh.com/git/kicer/ws2"
+                    target="_blank"
+                    class="btn btn-outline"
+                >
+                    kicer@Foresh: ws2（国内访问）</a
+                >
+                <h3 class="mt-3">软件许可</h3>
+                <p>本项目采用MIT许可证开源，欢迎自由使用和修改。</p>
+            </div>
+        </div>
+        <script src="./js/micro.min.js"></script>
+        <script>
+            // 全局变量
+            let currentConfig = {};
+
+            // 页面加载完成后执行
+            document.addEventListener("DOMContentLoaded", function () {
+                initTabSwitching();
+                initEventHandlers();
+                refreshStatus();
+            });
+
+            // 初始化选项卡切换
+            function initTabSwitching() {
+                mw.$$(".nav-tab").forEach((tab) => {
+                    mw.on(tab, "click", function () {
+                        const tabName = mw.attr(this, "data-tab");
+                        showTab(tabName);
+                    });
+                });
+            }
+
+            // 初始化事件处理器
+            function initEventHandlers() {
+                // 亮度滑块
+                mw.on(mw.$("#brightness-slider"), "input", function () {
+                    mw.text(mw.$("#brightness-value"), mw.val(this));
+                });
+
+                // 应用显示设置按钮
+                mw.on(
+                    mw.$("#apply-display-btn"),
+                    "click",
+                    applyDisplaySettings,
+                );
+
+                // 保存配置按钮
+                mw.on(mw.$("#save-config-btn"), "click", saveConfig);
+            }
+
+            // 初始化高级设置选项卡
+            function initAdvancedTab() {
+                // 快捷操作按钮
+                mw.$$("#advanced-tab .btn-outline").forEach((btn) => {
+                    mw.on(btn, "click", function () {
+                        const cmd = mw.attr(this, "data-cmd");
+                        if (cmd) {
+                            const commands = {
+                                get_mac:
+                                    'import network;R=network.WLAN().config("mac").hex()',
+                                reboot: "import machine;machine.reset()",
+                                reset_config:
+                                    'import os;os.romove("/config.json")',
+                            };
+                            mw.val(mw.$("#command-input"), commands[cmd] || "");
+                        }
+                    });
+                });
+
+                // 发送命令按钮
+                mw.on(mw.$("#send-cmd-btn"), "click", async function () {
+                    const command = mw.val(mw.$("#command-input"));
+                    const token = mw.val(mw.$("#token-input"));
+
+                    if (!command.trim()) {
+                        showMessage("请输入命令", "error");
+                        return;
+                    }
+
+                    try {
+                        mw.val(mw.$("#response-output"), "执行中...");
+                        const response = await mw.ajax.post("/exec", {
+                            command: command,
+                            token: token,
+                        });
+                        mw.val(mw.$("#response-output"), response);
+                        showMessage("命令执行成功", "success");
+                    } catch (error) {
+                        mw.val(
+                            mw.$("#response-output"),
+                            "错误: " + error.message,
+                        );
+                        showMessage("命令执行失败", "error");
+                    }
+                });
+            }
+
+            // 切换选项卡
+            function showTab(tabName) {
+                // 隐藏所有选项卡内容
+                mw.$$(".tab-content").forEach((tab) =>
+                    mw.removeClass(tab, "active"),
+                );
+
+                // 移除所有选项卡的激活类
+                mw.$$(".nav-tab").forEach((tab) =>
+                    mw.removeClass(tab, "active"),
+                );
+
+                // 显示选中的选项卡
+                mw.addClass(mw.$(`#${tabName}-tab`), "active");
+                // 激活选中的导航
+                mw.addClass(mw.$(`[data-tab="${tabName}"]`), "active");
+
+                // 根据选项卡刷新数据
+                if (tabName === "status") {
+                    refreshStatus();
+                } else if (tabName === "config") {
+                    loadConfig();
+                } else if (tabName === "display") {
+                    updateDisplaySettings();
+                } else if (tabName === "advanced") {
+                    initAdvancedTab();
+                }
+            }
+
+            // 更新LCD状态徽章
+            function updateLcdBadges(isReady) {
+                const badge = mw.$("#lcd-ready-badge");
+                if (isReady) {
+                    mw.text(badge, "正常");
+                    mw.replaceClass(badge, "badge-warning", "badge-success");
+                } else {
+                    mw.text(badge, "未就绪");
+                    mw.replaceClass(badge, "badge-success", "badge-warning");
+                }
+            }
+
+            // 刷新状态
+            async function refreshStatus() {
+                try {
+                    // 获取系统状态
+                    const response = await mw.ajax.get("/status");
+                    const data = JSON.parse(response);
+
+                    // 使用数据绑定更新系统状态
+                    mw.bind(data);
+
+                    // 更新内存仪表盘
+                    updateMemoryGauge(data.mem_free, data.mem_alloc);
+
+                    showMessage("状态已更新", "success");
+                } catch (error) {
+                    showMessage("获取状态失败: " + error.message, "error");
+                }
+            }
+
+            // 更新内存仪表盘
+            function updateMemoryGauge(free, alloc) {
+                const maxMemory = parseInt(free) + parseInt(alloc);
+                const memoryValue = parseInt(alloc);
+                const percentage = Math.min(
+                    100,
+                    Math.round((memoryValue / maxMemory) * 100),
+                );
+
+                // 使用micro.js的图表功能创建仪表盘
+                mw.chart.createGauge(mw.$("#memory-gauge"), percentage, 100, {
+                    label: "内存使用率",
+                    color:
+                        percentage > 80
+                            ? "#e74c3c"
+                            : percentage > 50
+                              ? "#f39c12"
+                              : "#27ae60",
+                });
+            }
+
+            // 更新显示设置
+            async function updateDisplaySettings() {
+                try {
+                    const response = await mw.ajax.get("/lcd");
+                    const data = JSON.parse(response);
+
+                    // 更新亮度滑块和显示值
+                    mw.val(mw.$("#brightness-slider"), data.brightness);
+                    mw.text(mw.$("#brightness-value"), data.brightness);
+
+                    // 更新UI类型选择框
+                    mw.val(mw.$("#ui-type-select"), data.ui_type);
+
+                    // 更新LCD状态徽章
+                    updateLcdBadges(data.ready);
+
+                    // 更新LCD数据表格
+                    updateLcdDataTable(data.data);
+                } catch (error) {
+                    showMessage("获取LCD状态失败: " + error.message, "error");
+                }
+            }
+
+            // 应用显示设置
+            async function applyDisplaySettings() {
+                try {
+                    const brightness = mw.val(mw.$("#brightness-slider"));
+                    const uiType = mw.val(mw.$("#ui-type-select"));
+
+                    const response = await mw.ajax.post("/lcd/set", {
+                        brightness: brightness,
+                        ui_type: uiType,
+                    });
+
+                    const data = JSON.parse(response);
+
+                    if (data.status === "success") {
+                        showMessage("显示设置已应用", "success");
+                        // 刷新显示设置
+                        await updateDisplaySettings();
+                    } else {
+                        showMessage(
+                            "设置失败: " + (data.message || "未知错误"),
+                            "error",
+                        );
+                    }
+                } catch (error) {
+                    showMessage("请求失败: " + error.message, "error");
+                }
+            }
+
+            // 加载配置
+            async function loadConfig() {
+                try {
+                    const response = await mw.ajax.get("/config");
+                    const data = JSON.parse(response);
+
+                    currentConfig = data;
+
+                    // 更新配置表单
+                    if (data.city) {
+                        mw.val(mw.$("#city-input"), data.city);
+                    }
+                    if (data.standby_time) {
+                        mw.val(mw.$("#standby-time-input"), data.standby_time);
+                    }
+
+                    // 更新配置表
+                    updateConfigTable(data);
+                } catch (error) {
+                    showMessage("获取配置失败: " + error.message, "error");
+                }
+            }
+
+            // 更新配置表格
+            function updateConfigTable(data) {
+                const configTable = mw.$("#current-config");
+
+                // 清除现有行（保留标题行）
+                while (configTable.rows.length > 1) {
+                    configTable.deleteRow(1);
+                }
+
+                // 添加新行
+                for (const key in data) {
+                    const row = configTable.insertRow();
+                    const cell1 = row.insertCell(0);
+                    const cell2 = row.insertCell(1);
+
+                    mw.text(cell1, key);
+                    mw.text(cell2, data[key]);
+                }
+            }
+
+            // 更新LCD数据表格
+            function updateLcdDataTable(data) {
+                const dataTable = mw.$("#lcd-data-table");
+
+                // 清除现有行（保留标题行）
+                while (dataTable.rows.length > 1) {
+                    dataTable.deleteRow(1);
+                }
+
+                // 添加数据行
+                for (const key in data) {
+                    const row = dataTable.insertRow();
+                    const cell1 = row.insertCell(0);
+                    const cell2 = row.insertCell(1);
+
+                    mw.text(cell1, key);
+                    let value = data[key];
+                    // 如果值是对象，则转换为JSON字符串
+                    if (typeof value === "object") {
+                        value = JSON.stringify(value);
+                    }
+                    mw.text(cell2, value);
+                }
+            }
+
+            // 保存配置
+            async function saveConfig() {
+                try {
+                    const city = mw.val(mw.$("#city-input"));
+                    const standbyTime = mw.val(mw.$("#standby-time-input"));
+
+                    if (!city) {
+                        showMessage("城市名称不能为空", "error");
+                        return;
+                    }
+
+                    const configData = {
+                        city: city,
+                    };
+
+                    // 只有当输入了熄屏时间时才添加到配置中
+                    if (standbyTime !== "") {
+                        configData.standby_time = standbyTime;
+                    }
+
+                    const response = await mw.ajax.post(
+                        "/config/set",
+                        configData,
+                    );
+                    const data = JSON.parse(response);
+
+                    if (data.status === "success") {
+                        showMessage("配置已保存", "success");
+                        loadConfig();
+                    } else {
+                        showMessage(
+                            "保存失败: " + (data.message || "未知错误"),
+                            "error",
+                        );
+                    }
+                } catch (error) {
+                    showMessage("请求失败: " + error.message, "error");
+                }
+            }
+
+            // 显示消息
+            function showMessage(text, type) {
+                const messageEl = mw.$("#message");
+                mw.text(messageEl, text);
+                mw.addClass(messageEl, "alert-" + type);
+                mw.show(messageEl);
+
+                setTimeout(() => {
+                    mw.hide(messageEl);
+                    mw.removeClass(messageEl, "alert-" + type);
+                }, 3000);
+            }
+        </script>
+    </body>
+</html>

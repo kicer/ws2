@@ -68,7 +68,7 @@ class Display:
             self.tft.init()
             self.tft.fill(0)
             self.show_jpg(self.bootimg, 80, 80)
-            self.message("WS2 v1.3.0 (20260201)")
+            self.message("WS2 v1.3.5 (20260202)")
 
             _print_mem()
             return True
@@ -252,6 +252,8 @@ class Display:
             self.show_jpg("/rom/images/rh.jpg",85,177)
             self.show_jpg("/rom/images/pm.jpg",11,209)
             self.show_jpg("/rom/images/ap.jpg",85,209)
+        else:
+            self.tft.fill(0)
 
         # 更新其他默认数据
         self.update_ui()
