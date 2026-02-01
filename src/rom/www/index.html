@@ -328,6 +328,9 @@
 
                 // 保存配置按钮
                 mw.on(mw.$("#save-config-btn"), "click", saveConfig);
+
+                // 初始化高级设置选项卡的事件处理器
+                initAdvancedTab();
             }
 
             // 初始化高级设置选项卡
@@ -401,8 +404,6 @@
                     loadConfig();
                 } else if (tabName === "display") {
                     updateDisplaySettings();
-                } else if (tabName === "advanced") {
-                    initAdvancedTab();
                 }
             }
 
