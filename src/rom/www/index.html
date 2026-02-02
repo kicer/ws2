@@ -263,6 +263,7 @@ Math.round((memoryValue / maxMemory) * 100),
 );// 使用micro.js的图表功能创建仪表盘
 mw.chart.createGauge(mw.$("#memory-gauge"), percentage, 100, {
 label: "内存使用率",
+percent: true,
 color:
 percentage > 80
 ? "#e74c3c"
