@@ -119,11 +119,13 @@ class HTTPServer(BaseServer):
         ssid = unquote(params.get(b"ssid", None))
         password = unquote(params.get(b"password", ""))
         city = unquote(params.get(b"city", None))
+        cityid = params.get(b"city", None)
 
         # 使用全局Config实例保存配置
         config.set("ssid", ssid)
         config.set("password", password)
         config.set("city", city)
+        config.set("cityid", cityid)
         if config.write():
             print("Configuration saved successfully")
         else:

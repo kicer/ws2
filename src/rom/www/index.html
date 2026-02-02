@@ -79,6 +79,7 @@ placeholder="例如：北京"
 可输入城市名称或城市ID（<a
 href="https://mapopen-website-wiki.cdn.bcebos.com/cityList/weather_district_id.csv"
 target="_blank"
+download
 >查看城市ID列表</a
 >）
 </small></div><div class="form-group"><label class="form-label">自动熄屏时间</label
@@ -348,6 +349,7 @@ showMessage("城市名称不能为空", "error");
 return;
 }const configData = {
 city: city,
+cityid: encodeURIComponent(city),
 };// 只有当输入了熄屏时间时才添加到配置中
 if (standbyTime !== "") {
 configData.standby_time = standbyTime;

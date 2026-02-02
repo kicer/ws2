@@ -139,6 +139,7 @@ async def lcd_set(request):
             elif k == "ui_type":
                 display.ui_type = v
                 config.set(k, v)
+        config.write()
     except Exception as e:
         ack["status"] = "error"
         ack["message"] = str(e)
@@ -212,7 +213,7 @@ async def fetch_weather_data(city=None):
 
         # 从配置文件获取城市，如果没有提供则使用配置中的值
         if not city:
-            city = config.get("city") or "北京"
+            city = config.get("cityid") or "北京"
 
         print(f"正在获取{city}天气数据...")
         # 从配置获取API基础URL，默认使用官方API
