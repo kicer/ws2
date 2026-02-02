@@ -82,12 +82,10 @@ target="_blank"
 download
 >查看城市ID列表</a
 >）
-</small></div><div class="form-group"><label class="form-label">自动熄屏时间</label
-><input
-type="time"
-id="standby-time-input"
-class="form-control"
-/><small class="text-muted">留空表示不自动熄屏</small></div>
+</small></div><div class="form-group"><label class="form-label">自动熄屏时间</label><div style="display: flex;">
+<input type="time" id="standby-time-input" class="form-control" placeholder="熄屏时间" style="margin-right: 10px; flex: 1;"/>
+<input type="time" id="wakeup-time-input" class="form-control" placeholder="唤醒时间" style="flex: 1;"/></div>
+<small class="text-muted">分别设置熄屏和唤醒时间，留空则表示不自动熄屏</small></div>
 <div class="form-group"><label class="form-label">自定义配置</label>
 <div id="custom-config-container" class="custom-config-list">
 <div class="custom-config-row" style="display: flex; margin-bottom: 10px;">
@@ -314,7 +312,10 @@ mw.val(mw.$("#city-input"), data.city);
 }
 if (data.standby_time) {
 mw.val(mw.$("#standby-time-input"), data.standby_time);
-}// 更新配置表
+}
+if (data.wakeup_time) {
+mw.val(mw.$("#wakeup-time-input"), data.wakeup_time);
+}
 updateConfigTable(data);
 } catch (error) {
 showMessage("获取配置失败: " + error.message, "error");
@@ -354,6 +355,7 @@ try {
 const userCfgKey = mw.val(mw.$("#custom-config-key"));
 const userCfgVal = mw.val(mw.$("#custom-config-value"));
 const city = mw.val(mw.$("#city-input"));
+const wakeupTime = mw.val(mw.$("#wakeup-time-input"));
 const standbyTime = mw.val(mw.$("#standby-time-input"));if (!city) {
 showMessage("城市名称不能为空", "error");
 return;
@@ -363,8 +365,9 @@ cityid: encodeURIComponent(city),
 };
 if (userCfgKey !== "") {
 configData[userCfgKey] = userCfgVal;
-}if (standbyTime !== "") {
+}if (standbyTime !== "" && wakeupTime !== "") {
 configData.standby_time = standbyTime;
+configData.wakeup_time = wakeupTime;
 }const response = await mw.ajax.post(
 "/config/set",
 configData,

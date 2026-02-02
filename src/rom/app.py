@@ -188,6 +188,37 @@ async def eval_cmd(request):
     finally:
         await json_response(request, json.dumps(ack))
 
+# 定时熄屏处理功能，熄屏则返回True
+def standby_control():
+    # 获取当前时间 (格式: HH:MM)
+    now = time.localtime()
+    current_time = "{:02d}:{:02d}".format(now[3], now[4])
+
+    # 从配置中获取熄屏和唤醒时间
+    standby_time = config.get("standby_time")
+    wakeup_time = config.get("wakeup_time")
+
+    _set = config.get('brightness', 10)
+
+    # 如果设置了熄屏和唤醒时间
+    if standby_time and wakeup_time:
+        # 如果当前时间在熄屏时间之后，唤醒时间之前，则关闭屏幕
+        if standby_time <= wakeup_time:
+            if current_time >= standby_time and current_time < wakeup_time:
+                _set = 0
+        else:
+            if current_time >= standby_time or current_time < wakeup_time:
+                _set = 0
+    else:
+        _set = None
+
+    if _set is not None:
+        if display.brightness():
+            if _set == 0:
+                display.brightness(0)
+        else:
+            if _set > 0:
+                display.brightness(config.get("brightness", 10))  # 恢复亮度
 
 
 # ntp时钟同步
@@ -327,7 +358,12 @@ async def ui_task():
                 # 每隔100帧，更新一次UI显示
                 F += 1
                 if F % 100 == 0:
-                    display.update_ui()
+                    standby_control() # 控制开关机
+                    # 只在亮屏时更新显示
+                    if display.brightness():
+                        display.update_ui()
+                    else:
+                        gc.collect(); print(f'LCD.idle.mem: {gc.mem_free()}')
 
                 # 每轮清理一次内存
                 gc.collect()
