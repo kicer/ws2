@@ -397,6 +397,9 @@ def cb_progress(data):
 
 
 def start():
+    # 禁用repl
+    if config.get('console') == "disable":
+        import os; os.dupterm(None, 1)
     # 初始化液晶屏
     display.init_display(config.get("bl_mode") == "pwm", 7000)
     display.brightness(int(config.get("brightness", 10)))
