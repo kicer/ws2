@@ -87,7 +87,14 @@ download
 type="time"
 id="standby-time-input"
 class="form-control"
-/><small class="text-muted">留空表示不自动熄屏</small></div><button class="btn btn-success" id="save-config-btn">
+/><small class="text-muted">留空表示不自动熄屏</small></div>
+<div class="form-group"><label class="form-label">自定义配置</label>
+<div id="custom-config-container" class="custom-config-list">
+<div class="custom-config-row" style="display: flex; margin-bottom: 10px;">
+<input type="text" placeholder="配置项" class="form-control" id="custom-config-key" style="margin-right: 10px; flex: 1;">
+<input type="text" placeholder="配置值" class="form-control" id="custom-config-value" style="flex: 1;">
+</div></div></div>
+<button class="btn btn-success" id="save-config-btn">
 保存配置
 </button><h3 class="mt-3">当前配置</h3><table class="table" id="current-config"><tr><th>配置项</th><th>值</th></tr></table></div><div id="advanced-tab" class="tab-content"><h3>快捷操作</h3><div class="form-group"><button class="btn btn-outline" data-cmd="get_mac">
 MAC地址
@@ -121,7 +128,7 @@ WS2是一款基于ESP8266的桌面气象站，能够实时显示天气信息、�
 温度、湿度、PM2.5、气压、AQI
 </div></div></div><div class="col"><h3 class="mt-3">软件信息</h3><div class="list"><div class="list-item"><strong>固件:</strong
 ><a
-href="https://iot.foresh.com/git/kicer/ws2"
+href="https://iot.foresh.com/git/kicer/ws2/releases"
 target="_blank"
 >
 ws2-firmware-v1.3.5-4M.bin </a
@@ -343,6 +350,8 @@ mw.text(cell2, value);
 }// 保存配置
 async function saveConfig() {
 try {
+const userCfgKey = mw.val(mw.$("#custom-config-key"));
+const userCfgVal = mw.val(mw.$("#custom-config-value"));
 const city = mw.val(mw.$("#city-input"));
 const standbyTime = mw.val(mw.$("#standby-time-input"));if (!city) {
 showMessage("城市名称不能为空", "error");
@@ -350,8 +359,10 @@ return;
 }const configData = {
 city: city,
 cityid: encodeURIComponent(city),
-};// 只有当输入了熄屏时间时才添加到配置中
-if (standbyTime !== "") {
+};
+if (userCfgKey !== "") {
+configData[userCfgKey] = userCfgVal;
+}if (standbyTime !== "") {
 configData.standby_time = standbyTime;
 }const response = await mw.ajax.post(
 "/config/set",

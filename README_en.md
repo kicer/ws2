@@ -5,6 +5,7 @@
 An ESP8266-based desktop weather station capable of displaying real-time weather information, environmental data, and time.
 
 ![WS2 Weather Station](docs/ws2.jpg)
+![Web Dashboard](docs/web.jpg)
 
 ## Features
 
