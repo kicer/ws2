@@ -97,7 +97,7 @@ POST /config/set            - 设置配置 {city: "北京", standby_time: "22:00
 ### 常见问题
 
 **Q: 设备无法连接WiFi**
-A: 检查WiFi密码是否正确，或重启设备重新配置
+- A: 检查WiFi密码是否正确，或重启设备重新配置
 
 **Q: 天气数据不更新**
 - A1: 检查网络连接，或尝试强制刷新天气数据
@@ -120,3 +120,4 @@ A: 检查WiFi密码是否正确，或重启设备重新配置
 - 项目主页: https://github.com/kicer/ws2
 - 项目主页: https://iot.foresh.com/git/kicer/ws2
 - 问题反馈: https://github.com/kicer/ws2/issues
+- QQ联络群: 697580459

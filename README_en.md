@@ -97,7 +97,7 @@ POST /config/set            - Set configuration {city: "Beijing", standby_time: 
 ### Common Issues
 
 **Q: Device cannot connect to WiFi**
-A: Check if the WiFi password is correct, or restart the device to reconfigure
+- A: Check if the WiFi password is correct, or restart the device to reconfigure
 
 **Q: Weather data doesn't update**
 - A1: Check network connection or try force-refreshing weather data
@@ -120,3 +120,4 @@ This project is licensed under the MIT License
 - Project Homepage: https://github.com/kicer/ws2
 - Project Homepage: https://iot.foresh.com/git/kicer/ws2
 - Issue Tracker: https://github.com/kicer/ws2/issues
+- QQ Group: 697580459
