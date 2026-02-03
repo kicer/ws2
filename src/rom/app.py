@@ -248,7 +248,7 @@ async def fetch_weather_data(city=None):
 
         print(f"正在获取{city}天气数据...")
         # 从配置获取API基础URL，默认使用官方API
-        url = config.get("weather_api_url", "http://esp.tangofu.com/api/ws2/")
+        url = config.get("weather_api_url", "http://esp.foresh.com/api/ws2/")
         params = {"uuid": uuid(), "city": city}
 
         # 发送GET请求
