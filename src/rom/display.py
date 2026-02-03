@@ -49,7 +49,7 @@ class Display:
 
             # 初始化显示屏
             self.tft = ST7789(
-                SPI(1, 40_000_000, polarity=1),
+                SPI(1, 40_000_000, polarity=1, phase=1),
                 240,
                 240,
                 dc=Pin(0, Pin.OUT),
@@ -68,7 +68,7 @@ class Display:
             self.tft.init()
             self.tft.fill(0)
             self.show_jpg(self.bootimg, 80, 80)
-            self.message("WS2 v1.3.6 (20260203)")
+            self.message("WS2 v1.3.7 (20260203)")
 
             _print_mem()
             return True
@@ -146,7 +146,7 @@ class Display:
         self.window("配置设备网络连接", tips, "portal ip: 192.168.4.1")
 
     # 更新ui数据
-    def update_ui(self, city=None, weather=None, advice=None, aqi=None, lunar=None, ip=None, envdat=None):
+    def update_ui(self, city=None, weather=None, advice=None, aqi=None, lunar=None, envdat=None):
         self.ticks += 1
         if self.ui_type == 'default':
             # 中文的城市名称
@@ -161,7 +161,6 @@ class Display:
                 self.ui_data['weather'] = weather
             # 建议信息可能有很多条，需要轮换展示
             if advice is not None and advice != self.ui_data.get('advice'):
-                if ip is not None: advice.append(ip)
                 self.ui_data['advice'] = advice
             # AQI等级分成0-5级，分别对应优、良、中、差、污、恶
             if aqi is not None and aqi != self.ui_data.get('aqi'):

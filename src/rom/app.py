@@ -271,7 +271,9 @@ async def fetch_weather_data(city=None):
                     advice = wdata.get("advice", [])
                     lunar = wdata.get("lunar", None)
 
-                    ip = wifi_manager.get_ip()
+                    if city == "N/A":
+                        advice.append("城市配置错误")
+                    advice.append(wifi_manager.get_ip())
 
                     display.update_ui(
                         city,
@@ -279,7 +281,6 @@ async def fetch_weather_data(city=None):
                         advice,
                         aqi,
                         lunar,
-                        ip,
                         envdat={"t": t, "rh": rh, "co2": co2, "pm": pm, "ap": ap},
                     )
                 else:
