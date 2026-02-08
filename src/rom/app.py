@@ -246,14 +246,15 @@ async def fetch_weather_data(city=None):
         if not city:
             city = config.get("cityid") or "北京"
 
-        print(f"正在获取{city}天气数据...")
-        # 从配置获取API基础URL，默认使用官方API
+        # 读取API URL，可附加其他参数
+        # http://esp.foresh.com/api/ws2/?appid=xxx&appsecert=yyy
         url = config.get("weather_api_url", "http://esp.foresh.com/api/ws2/")
-        params = {"uuid": uuid(), "city": city}
+        full_url = f"{url}{'&' if '?' in url else '?'}uuid={uuid()}&city={city}"
+        print(f"GET> {full_url}")
 
         # 发送GET请求
         async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as response:
+            async with session.get(full_url) as response:
                 # 检查响应状态
                 if response.status == 200:
                     # 解析JSON数据
@@ -301,7 +302,6 @@ async def sysinfo_update_task():
     last_weather = last_ntptime = start_ticks
 
     while True:
-        task_id = None  # task执行失败后，要快速重试
         try:
             current_ticks = time.ticks_ms()
             # 计算时间差，处理溢出
@@ -311,23 +311,17 @@ async def sysinfo_update_task():
             if weather_diff >= weather_ts * 1000:
                 # 更新天气数据
                 gc.collect()
-                task_id = "weather"
                 await fetch_weather_data()
                 last_weather = current_ticks
                 weather_ts = int(config.get("weather_ts", 600))  # 10min
             elif ntp_diff >= ntptime_ts * 1000:
                 # 更新NTP时间
                 gc.collect()
-                task_id = "ntp"
                 sync_ntp_time()
                 last_ntptime = current_ticks
                 ntptime_ts = int(config.get("ntptime_ts", 3600)) + 13  # 1hour
         except Exception as e:
             print(f"定时任务更新错误: {e}")
-            if task_id == "ntp":
-                ntptime_ts = 10
-            elif task_id == "weather":
-                weather_ts = 60
 
         # 等待x秒再检查（1~30）
         _x = min(30, 1 + min(weather_ts, ntptime_ts) // 10)

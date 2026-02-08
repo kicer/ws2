@@ -68,7 +68,7 @@ class Display:
             self.tft.init()
             self.tft.fill(0)
             self.show_jpg(self.bootimg, 80, 80)
-            self.message("WS2 v1.3.7 (20260203)")
+            self.message("WS2 v1.3.8 (20260208)")
 
             _print_mem()
             return True
@@ -181,7 +181,7 @@ class Display:
                 if t is not None and t != self.ui_data.get('t'):
                     self.ui_data['t'] = t
                     self.tft.fill_rect(35,179,40,16,0)
-                    self.tft.draw(self.vector_font, f"{str(t)}'C", 35,187,0xFFFF,0.5)
+                    self.tft.draw(self.vector_font, f"{str(t)}", 35,187,0xFFFF,0.5)
                 if rh is not None and rh != self.ui_data.get('rh'):
                     self.ui_data['rh'] = rh
                     self.tft.fill_rect(110,179,40,16,0)
